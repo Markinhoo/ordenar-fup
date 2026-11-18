@@ -1,0 +1,1 @@
+window.FUP_SUPABASE={"key":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmanFiY3RlcGJ0eXhwa2VhY29oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMTM4ODUsImV4cCI6MjA5Nzg4OTg4NX0.7CCSiBr-g2iZYW0qAqau3xdWkAZd1w_d-ZpmEiv4A68","url":"https://yfjqbctepbtyxpkeacoh.supabase.co"};

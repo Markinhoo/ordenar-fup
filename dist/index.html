@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#f5f3ec">
   <title>Ordenar FUP</title>
   <meta name="description" content="Ordena tu Excel FUP y verifica con la cámara los folios de tus documentos físicos.">
@@ -12,7 +13,7 @@
   <main class="shell">
     <header class="topbar">
       <div class="brand"><span class="brand-mark">↧</span><span>ORDENAR <b>FUP</b></span></div>
-      <span class="private-pill"><span class="private-dot"></span> Procesamiento en tu navegador</span>
+      <span class="private-pill"><span class="private-dot"></span> Excel local · control compartido</span>
     </header>
 
     <section class="hero">
@@ -61,8 +62,9 @@
     <section id="verifyView" class="verify-view" hidden aria-label="Verificar documentos físicos">
       <div class="verify-tools card">
         <div class="card-heading"><div><div class="section-number">CONTROL DE DOCUMENTOS</div><h2>Verifica cada folio</h2></div><span class="card-icon">✓</span></div>
-        <p class="verify-help">Carga el Excel y enfoca el número debajo de «No. de documento». Cada folio encontrado quedará palomeado.</p>
+        <p class="verify-help">Carga el Excel en la computadora, crea un enlace de equipo y ábrelo en los celulares. Todos verán las mismas palomitas.</p>
         <label class="verify-file" for="verifyFileInput"><input id="verifyFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><span>↑</span><strong id="verifyFileName">Cargar Excel .xlsx</strong></label>
+        <div class="share-controls"><button id="shareButton" type="button" disabled>Crear enlace de equipo</button><button id="copyLink" type="button" hidden>Copiar enlace</button><small id="shareState">Aún no hay una lista compartida.</small></div>
         <div class="verify-progress"><strong id="verifyCount">0 / 0</strong><span>documentos verificados</span><div class="progress-track"><div id="progressFill"></div></div><small id="remainingCount">Carga un archivo para comenzar</small></div>
         <button id="openCamera" class="primary-button" type="button" disabled>▣ Abrir cámara</button>
         <label class="photo-button" for="photoInput">Tomar o elegir foto</label><input id="photoInput" class="visually-hidden" type="file" accept="image/*" capture="environment" disabled>
@@ -77,11 +79,12 @@
       </div>
     </section>
     <p class="status" id="status" role="status" aria-live="polite"></p>
-    <footer>ORDENAR FUP <span>•</span> El archivo permanece en tu dispositivo.</footer>
+    <footer>ORDENAR FUP <span>•</span> El Excel original permanece en tu dispositivo.</footer>
   </main>
   <div class="camera-modal" id="cameraModal" hidden role="dialog" aria-modal="true" aria-label="Escanear folio"><div class="camera-panel"><div class="camera-header"><strong>Escanear No. de documento</strong><button id="closeCamera" type="button" aria-label="Cerrar cámara">×</button></div><div class="camera-preview"><video id="cameraVideo" autoplay playsinline muted></video><div class="scan-frame"><span>Coloca aquí solo el número de folio</span></div></div><p id="cameraMessage" role="status" aria-live="polite">Acerca la cámara hasta que el número se vea nítido.</p><button id="captureFolio" class="primary-button" type="button">Leer folio</button></div></div>
   <script src="./fflate.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+  <script src="./shared-config.js"></script>
   <script type="module" src="./main.js"></script>
 </body>
 </html>

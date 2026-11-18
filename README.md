@@ -4,9 +4,13 @@ Aplicación estática para ordenar RFC y folios dentro de una plantilla Excel, r
 
 ## Verificación de documentos
 
-En la pestaña **Verificar documentos**, carga el Excel desde el celular y enfoca con la cámara el número que está debajo de «No. de documento». La página marca el folio solo cuando hay una coincidencia única y exacta con el Excel. También permite tomar una foto, escribir el folio o marcar el registro manualmente. Muestra el total verificado y los pendientes, permite filtrar y descarga un reporte CSV.
+En la pestaña **Verificar documentos**, carga el Excel desde una computadora y crea un enlace privado de equipo. Quien abre ese enlace en un celular recibe el listado sin volver a cargar el archivo. Enfoca con la cámara el número debajo de «No. de documento». La página marca el folio solo cuando hay una coincidencia única y exacta. Permite tomar una foto, escribir el folio o marcar el registro manualmente. Muestra verificados y pendientes, permite filtrar y descarga un reporte CSV. Las marcas se sincronizan aproximadamente cada cuatro segundos.
 
-El avance se guarda en el navegador asociado al contenido exacto del Excel. Las imágenes y el Excel no se envían a un servidor. El reconocimiento usa Tesseract.js en el dispositivo; su código y modelo de idioma se descargan por Internet la primera vez que se usa.
+Antes de crear el enlace, el avance solo se guarda en el navegador asociado al Excel. Al crear el enlace, **folio, RFC y marcas** se guardan en el esquema aislado `"fup-sep"` de la base de datos Supabase del proyecto Aria. El Excel original y las fotos no se suben. El enlace contiene una clave aleatoria que da acceso a la lista; compártelo solo con el equipo. El reconocimiento usa Tesseract.js en el dispositivo; su código y modelo de idioma se descargan por Internet la primera vez que se usa.
+
+## Base de datos
+
+El SQL para crear el esquema, tablas y funciones está en `supabase/fup-sep.sql`. En la configuración Data API del proyecto Supabase de Aria hay que agregar `fup-sep` a **Exposed schemas**, conservando los esquemas existentes. Solo se otorga a `anon` ejecución de las cuatro funciones del esquema; las tablas tienen RLS activada y no tienen permisos directos para visitantes.
 
 ## Estructura
 

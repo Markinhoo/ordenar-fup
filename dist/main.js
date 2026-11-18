@@ -8,6 +8,9 @@ let parsedBook = null;
 let verification = [];
 let verified = new Set();
 let verificationKey = '';
+let roomSecret = '';
+let sharedFileName = '';
+let syncBusy = false;
 let cameraStream = null;
 let ocrWorker = null;
 let readingFolio = false;
@@ -277,6 +280,8 @@ async function loadFile(file) {
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
     parsedBook = readBook(bytes); selectedFile = file;
+    roomSecret = '';
+    const url = new URL(location.href); url.searchParams.delete('s'); history.replaceState(null, '', url);
     await prepareVerification(bytes);
     $('fileName').textContent = file.name;
     $('fileDetails').textContent = `${(file.size / 1024).toFixed(0)} KB · ${parsedBook.sheet.slots.length} registros`;
@@ -287,7 +292,7 @@ async function loadFile(file) {
     renderPeople(); setStatus('Archivo listo. Escribe los nombres y genera el Excel.');
   } catch (error) {
     parsedBook = null; selectedFile = null; $('fileSummary').hidden = true;
-    verification = []; verified = new Set(); verificationKey = ''; renderVerification();
+    verification = []; verified = new Set(); verificationKey = ''; sharedFileName = ''; renderVerification();
     $('uploadTitle').textContent = 'Arrastra tu Excel aquí';
     $('uploadSubtitle').textContent = 'o haz clic para elegir un archivo .xlsx';
     $('totalRecords').innerHTML = '— <span>registros detectados</span>';
@@ -297,6 +302,7 @@ async function loadFile(file) {
 
 async function prepareVerification(bytes) {
   verification = parsedBook.sheet.slots.map((slot, index) => ({ id: String(index), folio: slot.folio, digits: slot.folio.match(/^\s*(\d+)/)?.[1] || '', rfc: slot.rfc }));
+  sharedFileName = selectedFile.name;
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   verificationKey = 'ordenar-fup:verificacion:' + [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
   try { verified = new Set(JSON.parse(localStorage.getItem(verificationKey) || '[]').filter((id) => verification.some((item) => item.id === id))); }
@@ -307,6 +313,7 @@ async function prepareVerification(bytes) {
 }
 
 function saveVerification() {
+  if (roomSecret) return;
   try { localStorage.setItem(verificationKey, JSON.stringify([...verified])); }
   catch { showVerifyMessage('La verificación funciona, pero este navegador no pudo guardar el avance.', true); }
 }
@@ -322,6 +329,10 @@ function renderVerification() {
   $('remainingCount').textContent = total ? `${total - verified.size} pendientes` : 'Carga un archivo para comenzar';
   $('progressFill').style.width = total ? `${verified.size / total * 100}%` : '0%';
   $('listTitle').textContent = $('pendingOnly').checked ? 'Folios pendientes' : 'Todos los folios';
+  $('shareButton').hidden = !!roomSecret;
+  $('copyLink').hidden = !roomSecret;
+  $('shareButton').disabled = !parsedBook || !!roomSecret;
+  $('shareState').textContent = roomSecret ? 'Lista compartida · las marcas se sincronizan entre dispositivos.' : total ? 'Lista solo en este dispositivo. Crea el enlace para compartirla.' : 'Aún no hay una lista compartida.';
   for (const id of ['openCamera', 'photoInput', 'manualFolio', 'exportReport', 'folioSearch', 'pendingOnly', 'clearProgress']) $(id).disabled = !total;
   $('manualForm').querySelector('button').disabled = !total;
   const query = $('folioSearch').value.trim().toUpperCase();
@@ -342,7 +353,7 @@ function renderVerification() {
   list.appendChild(fragment);
 }
 
-function markFolio(raw) {
+async function markFolio(raw) {
   const digits = String(raw).trim();
   if (!/^\d+$/.test(digits)) { showVerifyMessage('Escribe o escanea solo los dígitos del folio.', true); return false; }
   const matches = verification.filter((item) => item.digits === digits);
@@ -350,6 +361,8 @@ function markFolio(raw) {
   if (matches.length > 1) { showVerifyMessage(`El folio ${digits} aparece ${matches.length} veces. Búscalo en la lista y marca el RFC correcto.`, true); $('folioSearch').value = digits; renderVerification(); return false; }
   const item = matches[0];
   if (verified.has(item.id)) { showVerifyMessage(`El folio ${digits} ya estaba verificado (${item.rfc}).`); return true; }
+  try { if (roomSecret) await sharedRpc('set_mark', { p_secret: roomSecret, p_record_id: Number(item.id), p_checked: true }); }
+  catch (error) { showVerifyMessage(`No se pudo sincronizar el folio: ${error.message}`, true); return false; }
   verified.add(item.id); saveVerification(); renderVerification();
   showVerifyMessage(`✓ Folio ${digits} verificado · ${item.rfc}`);
   return true;
@@ -362,6 +375,59 @@ function setMode(mode) {
   $('organizeTab').setAttribute('aria-pressed', String(!verifyMode)); $('verifyTab').setAttribute('aria-pressed', String(verifyMode));
   $('status').hidden = verifyMode;
   if (!verifyMode) closeCamera();
+}
+
+async function sharedRpc(name, params) {
+  const config = window.FUP_SUPABASE;
+  if (!config?.url || !config?.key) throw new Error('La conexión compartida aún no está configurada.');
+  const response = await fetch(`${config.url}/rest/v1/rpc/${name}`, {
+    method: 'POST', cache: 'no-store',
+    headers: { apikey: config.key, Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json', 'Content-Profile': 'fup-sep' },
+    body: JSON.stringify(params),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.message || `Error ${response.status}`);
+  return data;
+}
+
+function roomLink() {
+  const url = new URL(location.href); url.searchParams.set('s', roomSecret); return url.href;
+}
+
+async function publishRoom() {
+  if (!parsedBook || roomSecret) return;
+  $('shareButton').disabled = true; $('shareState').textContent = 'Creando enlace…';
+  try {
+    const records = verification.map(({ id, folio, rfc }) => ({ folio, rfc, checked: verified.has(id) }));
+    const secret = await sharedRpc('create_room', { p_file_name: selectedFile.name, p_records: records });
+    if (!/^[0-9a-f]{64}$/.test(secret)) throw new Error('La base de datos no devolvió un enlace válido.');
+    roomSecret = secret; verificationKey = '';
+    history.replaceState(null, '', roomLink()); renderVerification();
+    showVerifyMessage('Enlace listo. Compártelo con quienes van a escanear.');
+    await copyRoomLink();
+  } catch (error) { $('shareButton').disabled = false; $('shareState').textContent = 'No se pudo crear el enlace.'; showVerifyMessage(error.message, true); }
+}
+
+async function copyRoomLink() {
+  try { await navigator.clipboard.writeText(roomLink()); showVerifyMessage('Enlace copiado. Envíalo a tu equipo.'); }
+  catch { showVerifyMessage('El enlace está en la barra del navegador. Cópialo para compartirlo.'); }
+}
+
+async function syncRoom(initial = false) {
+  if (!roomSecret || syncBusy || (!initial && document.hidden)) return;
+  syncBusy = true;
+  try {
+    const data = await sharedRpc('get_room', { p_secret: roomSecret });
+    if (!data || !Array.isArray(data.records) || !Array.isArray(data.verified)) throw new Error('No se encontró esta lista compartida. Comprueba el enlace.');
+    sharedFileName = data.fileName || 'Listado FUP';
+    verification = data.records.map((item, index) => ({ id: String(index), folio: String(item.folio), digits: String(item.folio).match(/^\s*(\d+)/)?.[1] || '', rfc: String(item.rfc) }));
+    const next = new Set(data.verified.map(String));
+    const changed = initial || next.size !== verified.size || [...next].some((id) => !verified.has(id));
+    verified = next;
+    if (changed) renderVerification();
+    if (initial) { $('verifyFileName').textContent = sharedFileName; setMode('verify'); showVerifyMessage('Lista compartida cargada. Ya puedes escanear con tu equipo.'); }
+  } catch (error) { if (initial) { roomSecret = ''; renderVerification(); setMode('verify'); } showVerifyMessage(`Sincronización: ${error.message}`, true); }
+  finally { syncBusy = false; }
 }
 
 async function getOcrWorker() {
@@ -384,7 +450,7 @@ async function readImage(image) {
     const known = candidates.filter((candidate) => verification.some((item) => item.digits === candidate));
     if (known.length === 1 && data.confidence >= 45) {
       const accepted = candidates.length === 1 || confirm(`La foto contiene varios números (${candidates.join(', ')}). ¿El folio del documento es ${known[0]}?`);
-      const success = accepted && markFolio(known[0]);
+      const success = accepted && await markFolio(known[0]);
       $('cameraMessage').textContent = success ? `Leído: ${known[0]}. Coloca el siguiente documento.` : 'Comprueba el folio en la lista.';
       if (!accepted) showVerifyMessage('No se marcó ningún folio. Acerca la cámara al número o escríbelo.');
     } else if (candidates.length > 1 || known.length > 1) {
@@ -434,25 +500,30 @@ function downloadReport() {
   const lines = [['Folio', 'RFC', 'Estado'], ...verification.map((item) => [item.folio, item.rfc, verified.has(item.id) ? 'Verificado' : 'Pendiente'])];
   const csv = '\ufeff' + lines.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-  const link = document.createElement('a'); link.href = url; link.download = `${selectedFile.name.replace(/\.xlsx$/i, '')}_verificacion.csv`;
+  const link = document.createElement('a'); link.href = url; link.download = `${sharedFileName.replace(/\.xlsx$/i, '')}_verificacion.csv`;
   document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 $('fileInput').addEventListener('change', (event) => loadFile(event.target.files[0]));
 $('verifyFileInput').addEventListener('change', (event) => loadFile(event.target.files[0]));
+$('shareButton').addEventListener('click', publishRoom);
+$('copyLink').addEventListener('click', copyRoomLink);
 $('organizeTab').addEventListener('click', () => setMode('organize'));
 $('verifyTab').addEventListener('click', () => setMode('verify'));
-$('manualForm').addEventListener('submit', (event) => { event.preventDefault(); if (markFolio($('manualFolio').value)) $('manualFolio').value = ''; });
-$('verifyList').addEventListener('change', (event) => {
+$('manualForm').addEventListener('submit', async (event) => { event.preventDefault(); if (await markFolio($('manualFolio').value)) $('manualFolio').value = ''; });
+$('verifyList').addEventListener('change', async (event) => {
   if (event.target.type !== 'checkbox') return;
   const id = event.target.dataset.id;
-  if (event.target.checked) verified.add(id); else verified.delete(id);
+  const checked = event.target.checked;
+  try { if (roomSecret) await sharedRpc('set_mark', { p_secret: roomSecret, p_record_id: Number(id), p_checked: checked }); }
+  catch (error) { event.target.checked = !checked; showVerifyMessage(`No se pudo sincronizar: ${error.message}`, true); return; }
+  if (checked) verified.add(id); else verified.delete(id);
   saveVerification(); renderVerification();
-  showVerifyMessage(event.target.checked ? 'Documento marcado manualmente.' : 'Documento devuelto a pendientes.');
+  showVerifyMessage(checked ? 'Documento marcado manualmente.' : 'Documento devuelto a pendientes.');
 });
 $('folioSearch').addEventListener('input', renderVerification);
 $('pendingOnly').addEventListener('change', renderVerification);
-$('clearProgress').addEventListener('click', () => { if (!verified.size || !confirm('¿Reiniciar todos los folios verificados de este Excel?')) return; verified.clear(); saveVerification(); renderVerification(); showVerifyMessage('Verificación reiniciada.'); });
+$('clearProgress').addEventListener('click', async () => { if (!verified.size || !confirm('¿Reiniciar todos los folios verificados de este Excel para todo el equipo?')) return; try { if (roomSecret) await sharedRpc('clear_marks', { p_secret: roomSecret }); verified.clear(); saveVerification(); renderVerification(); showVerifyMessage('Verificación reiniciada.'); } catch (error) { showVerifyMessage(`No se pudo reiniciar: ${error.message}`, true); } });
 $('exportReport').addEventListener('click', downloadReport);
 $('openCamera').addEventListener('click', openCamera);
 $('closeCamera').addEventListener('click', closeCamera);
@@ -488,3 +559,10 @@ $('generate').addEventListener('click', () => {
 
 renderPeople();
 renderVerification();
+const linkSecret = new URL(location.href).searchParams.get('s');
+if (linkSecret) {
+  if (/^[0-9a-f]{64}$/.test(linkSecret)) { roomSecret = linkSecret; syncRoom(true); }
+  else { setMode('verify'); showVerifyMessage('El enlace de equipo no es válido.', true); }
+}
+setInterval(() => syncRoom(), 4000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncRoom(); });
