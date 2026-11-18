@@ -5,6 +5,12 @@ const $ = (id) => document.getElementById(id);
 const palette = ['#DCEBFF', '#FCE3D7', '#DDF2DF', '#F7E5F4', '#FFF0C8', '#E4E3FF', '#D6F1EE', '#F9DFE8', '#E8EBCB', '#E4E9F2', '#F7E7CF', '#DCEAD9'];
 let selectedFile = null;
 let parsedBook = null;
+let verification = [];
+let verified = new Set();
+let verificationKey = '';
+let cameraStream = null;
+let ocrWorker = null;
+let readingFolio = false;
 
 function colorFor(index) {
   if (index < palette.length) return palette[index];
@@ -271,6 +277,7 @@ async function loadFile(file) {
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
     parsedBook = readBook(bytes); selectedFile = file;
+    await prepareVerification(bytes);
     $('fileName').textContent = file.name;
     $('fileDetails').textContent = `${(file.size / 1024).toFixed(0)} KB · ${parsedBook.sheet.slots.length} registros`;
     $('fileSummary').hidden = false;
@@ -280,6 +287,7 @@ async function loadFile(file) {
     renderPeople(); setStatus('Archivo listo. Escribe los nombres y genera el Excel.');
   } catch (error) {
     parsedBook = null; selectedFile = null; $('fileSummary').hidden = true;
+    verification = []; verified = new Set(); verificationKey = ''; renderVerification();
     $('uploadTitle').textContent = 'Arrastra tu Excel aquí';
     $('uploadSubtitle').textContent = 'o haz clic para elegir un archivo .xlsx';
     $('totalRecords').innerHTML = '— <span>registros detectados</span>';
@@ -287,7 +295,169 @@ async function loadFile(file) {
   }
 }
 
+async function prepareVerification(bytes) {
+  verification = parsedBook.sheet.slots.map((slot, index) => ({ id: String(index), folio: slot.folio, digits: slot.folio.match(/^\s*(\d+)\s*$/)?.[1] || '', rfc: slot.rfc }));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  verificationKey = 'ordenar-fup:verificacion:' + [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  try { verified = new Set(JSON.parse(localStorage.getItem(verificationKey) || '[]').filter((id) => verification.some((item) => item.id === id))); }
+  catch { verified = new Set(); }
+  $('verifyFileName').textContent = selectedFile.name;
+  renderVerification();
+  showVerifyMessage(`${verification.length} folios cargados. Puedes comenzar a escanear.`);
+}
+
+function saveVerification() {
+  try { localStorage.setItem(verificationKey, JSON.stringify([...verified])); }
+  catch { showVerifyMessage('La verificación funciona, pero este navegador no pudo guardar el avance.', true); }
+}
+
+function showVerifyMessage(message, error = false) {
+  $('verifyMessage').textContent = message;
+  $('verifyMessage').classList.toggle('error', error);
+}
+
+function renderVerification() {
+  const total = verification.length;
+  $('verifyCount').textContent = `${verified.size} / ${total}`;
+  $('remainingCount').textContent = total ? `${total - verified.size} pendientes` : 'Carga un archivo para comenzar';
+  $('progressFill').style.width = total ? `${verified.size / total * 100}%` : '0%';
+  $('listTitle').textContent = $('pendingOnly').checked ? 'Folios pendientes' : 'Todos los folios';
+  for (const id of ['openCamera', 'photoInput', 'manualFolio', 'exportReport', 'folioSearch', 'pendingOnly', 'clearProgress']) $(id).disabled = !total;
+  $('manualForm').querySelector('button').disabled = !total;
+  const query = $('folioSearch').value.trim().toUpperCase();
+  const visible = verification.filter((item) => (!$('pendingOnly').checked || !verified.has(item.id)) && (!query || item.folio.toUpperCase().includes(query) || item.rfc.toUpperCase().includes(query)));
+  const list = $('verifyList');
+  list.replaceChildren();
+  if (!total || !visible.length) {
+    const empty = document.createElement('p'); empty.className = 'empty-list'; empty.textContent = total ? 'No hay folios con este filtro.' : 'Carga tu Excel para ver los folios.'; list.appendChild(empty); return;
+  }
+  const fragment = document.createDocumentFragment();
+  for (const item of visible) {
+    const row = document.createElement('label'); row.className = `verify-row${verified.has(item.id) ? ' checked' : ''}`;
+    const box = document.createElement('input'); box.type = 'checkbox'; box.checked = verified.has(item.id); box.dataset.id = item.id; box.setAttribute('aria-label', `Verificado: folio ${item.folio}, RFC ${item.rfc}`);
+    const folio = document.createElement('strong'); folio.textContent = item.folio;
+    const rfc = document.createElement('span'); rfc.textContent = item.rfc;
+    row.append(box, folio, rfc); fragment.appendChild(row);
+  }
+  list.appendChild(fragment);
+}
+
+function markFolio(raw) {
+  const digits = String(raw).trim();
+  if (!/^\d+$/.test(digits)) { showVerifyMessage('Escribe o escanea solo los dígitos del folio.', true); return false; }
+  const matches = verification.filter((item) => item.digits === digits);
+  if (!matches.length) { showVerifyMessage(`El folio ${digits} no aparece en este Excel. Revisa el documento o el archivo.`, true); return false; }
+  if (matches.length > 1) { showVerifyMessage(`El folio ${digits} aparece ${matches.length} veces. Búscalo en la lista y marca el RFC correcto.`, true); $('folioSearch').value = digits; renderVerification(); return false; }
+  const item = matches[0];
+  if (verified.has(item.id)) { showVerifyMessage(`El folio ${digits} ya estaba verificado (${item.rfc}).`); return true; }
+  verified.add(item.id); saveVerification(); renderVerification();
+  showVerifyMessage(`✓ Folio ${digits} verificado · ${item.rfc}`);
+  return true;
+}
+
+function setMode(mode) {
+  const verifyMode = mode === 'verify';
+  $('organizeView').hidden = verifyMode; $('verifyView').hidden = !verifyMode;
+  $('organizeTab').classList.toggle('selected', !verifyMode); $('verifyTab').classList.toggle('selected', verifyMode);
+  $('organizeTab').setAttribute('aria-pressed', String(!verifyMode)); $('verifyTab').setAttribute('aria-pressed', String(verifyMode));
+  $('status').hidden = verifyMode;
+  if (!verifyMode) closeCamera();
+}
+
+async function getOcrWorker() {
+  if (!window.Tesseract) throw new Error('No se pudo cargar el lector de texto. Comprueba tu conexión e inténtalo de nuevo.');
+  if (!ocrWorker) {
+    ocrWorker = await Tesseract.createWorker('eng');
+    await ocrWorker.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
+  }
+  return ocrWorker;
+}
+
+async function readImage(image) {
+  if (readingFolio) return;
+  readingFolio = true; $('captureFolio').disabled = true;
+  $('cameraMessage').textContent = 'Leyendo número…'; showVerifyMessage('Leyendo número de documento…');
+  try {
+    const worker = await getOcrWorker();
+    const { data } = await worker.recognize(image);
+    const candidates = [...new Set((data.text.match(/\d{3,9}/g) || []).map((value) => value.trim()))];
+    const known = candidates.filter((candidate) => verification.some((item) => item.digits === candidate));
+    if (known.length === 1 && candidates.length === 1 && data.confidence >= 45) {
+      const success = markFolio(known[0]);
+      $('cameraMessage').textContent = success ? `Leído: ${known[0]}. Coloca el siguiente documento.` : 'Comprueba el folio en la lista.';
+    } else if (candidates.length > 1 || known.length > 1) {
+      $('cameraMessage').textContent = `Se leyeron varios números: ${candidates.join(', ')}.`;
+      showVerifyMessage('Se detectaron varios números. Acerca la cámara a un solo folio o escríbelo.', true);
+    } else if (known.length === 1) {
+      $('cameraMessage').textContent = `Lectura poco clara: ${known[0]}.`;
+      showVerifyMessage(`No se marcó ${known[0]} porque la imagen no es suficientemente clara. Inténtalo de nuevo o escríbelo.`, true);
+    } else {
+      const detected = candidates.join(', ');
+      $('cameraMessage').textContent = detected ? `Leído: ${detected}. No se encontró en el Excel.` : 'No se pudo leer el número. Acerca más la cámara.';
+      showVerifyMessage(detected ? `No se encontró ${detected} en este Excel. Revisa el folio o escríbelo.` : 'No se pudo leer el folio. Intenta otra foto o escríbelo.', true);
+    }
+  } catch (error) { $('cameraMessage').textContent = error.message; showVerifyMessage(error.message, true); }
+  finally { readingFolio = false; $('captureFolio').disabled = false; }
+}
+
+async function openCamera() {
+  if (!verification.length) return;
+  if (!navigator.mediaDevices?.getUserMedia) { showVerifyMessage('Tu navegador no permite abrir la cámara. Usa «Tomar o elegir foto».', true); return; }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    $('cameraVideo').srcObject = cameraStream;
+    $('cameraModal').hidden = false;
+    await $('cameraVideo').play();
+  } catch { closeCamera(); showVerifyMessage('No se pudo abrir la cámara. Revisa el permiso o usa «Tomar o elegir foto».', true); }
+}
+
+function closeCamera() {
+  $('cameraModal').hidden = true;
+  $('cameraVideo').pause(); $('cameraVideo').srcObject = null;
+  cameraStream?.getTracks().forEach((track) => track.stop()); cameraStream = null;
+}
+
+function captureCamera() {
+  const video = $('cameraVideo');
+  if (!video.videoWidth) { $('cameraMessage').textContent = 'Espera a que aparezca la imagen de la cámara.'; return; }
+  const canvas = document.createElement('canvas');
+  const w = video.videoWidth * .78, h = video.videoHeight * .23;
+  canvas.width = Math.round(w * 2); canvas.height = Math.round(h * 2);
+  const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(video, (video.videoWidth - w) / 2, (video.videoHeight - h) / 2, w, h, 0, 0, canvas.width, canvas.height);
+  readImage(canvas);
+}
+
+function downloadReport() {
+  const lines = [['Folio', 'RFC', 'Estado'], ...verification.map((item) => [item.folio, item.rfc, verified.has(item.id) ? 'Verificado' : 'Pendiente'])];
+  const csv = '\ufeff' + lines.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a'); link.href = url; link.download = `${selectedFile.name.replace(/\.xlsx$/i, '')}_verificacion.csv`;
+  document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 $('fileInput').addEventListener('change', (event) => loadFile(event.target.files[0]));
+$('verifyFileInput').addEventListener('change', (event) => loadFile(event.target.files[0]));
+$('organizeTab').addEventListener('click', () => setMode('organize'));
+$('verifyTab').addEventListener('click', () => setMode('verify'));
+$('manualForm').addEventListener('submit', (event) => { event.preventDefault(); if (markFolio($('manualFolio').value)) $('manualFolio').value = ''; });
+$('verifyList').addEventListener('change', (event) => {
+  if (event.target.type !== 'checkbox') return;
+  const id = event.target.dataset.id;
+  if (event.target.checked) verified.add(id); else verified.delete(id);
+  saveVerification(); renderVerification();
+  showVerifyMessage(event.target.checked ? 'Documento marcado manualmente.' : 'Documento devuelto a pendientes.');
+});
+$('folioSearch').addEventListener('input', renderVerification);
+$('pendingOnly').addEventListener('change', renderVerification);
+$('clearProgress').addEventListener('click', () => { if (!verified.size || !confirm('¿Reiniciar todos los folios verificados de este Excel?')) return; verified.clear(); saveVerification(); renderVerification(); showVerifyMessage('Verificación reiniciada.'); });
+$('exportReport').addEventListener('click', downloadReport);
+$('openCamera').addEventListener('click', openCamera);
+$('closeCamera').addEventListener('click', closeCamera);
+$('captureFolio').addEventListener('click', captureCamera);
+$('cameraModal').addEventListener('click', (event) => { if (event.target === $('cameraModal')) closeCamera(); });
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('cameraModal').hidden) closeCamera(); });
+$('photoInput').addEventListener('change', (event) => { const file = event.target.files[0]; if (file) readImage(file); event.target.value = ''; });
 $('changeFile').addEventListener('click', () => $('fileInput').click());
 $('minus').addEventListener('click', () => { $('personCount').value = String(countValue() - 1); renderPeople(); });
 $('plus').addEventListener('click', () => { $('personCount').value = String(countValue() + 1); renderPeople(); });
@@ -315,3 +485,4 @@ $('generate').addEventListener('click', () => {
 });
 
 renderPeople();
+renderVerification();
