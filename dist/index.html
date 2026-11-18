@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f3ec">
+  <title>Ordenador de RFC y folios</title>
+  <meta name="description" content="Ordena RFC y folios en tu plantilla Excel y asigna registros por persona con colores.">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">↧</span><span>ORDENADOR <b>RFC</b></span></div>
+      <span class="private-pill"><span class="private-dot"></span> Procesamiento en tu navegador</span>
+    </header>
+
+    <section class="hero">
+      <div class="eyebrow"><span class="eyebrow-line"></span> ORGANIZA TU LISTADO</div>
+      <h1>De tu Excel original<br><em>a una lista lista para repartir.</em></h1>
+      <p>Carga el archivo, indica quiénes trabajarán los registros y descarga el mismo libro con los RFC ordenados, sus folios correspondientes y un color para cada persona.</p>
+    </section>
+
+    <div class="steps"><span class="active">01 <b>Archivo</b></span><i></i><span id="stepTwo">02 <b>Personas</b></span><i></i><span id="stepThree">03 <b>Descarga</b></span></div>
+
+    <section class="work-grid">
+      <div class="card file-card">
+        <div class="card-heading"><div><div class="section-number">01 / ARCHIVO DE ORIGEN</div><h2>Sube tu listado</h2></div><span class="card-icon">▦</span></div>
+        <label class="dropzone" id="dropzone" for="fileInput">
+          <input id="fileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+          <span class="upload-icon">↑</span>
+          <strong id="uploadTitle">Arrastra tu Excel aquí</strong>
+          <span id="uploadSubtitle">o haz clic para elegir un archivo .xlsx</span>
+        </label>
+        <div class="file-summary" id="fileSummary" hidden>
+          <div class="summary-icon">XLSX</div>
+          <div><strong id="fileName"></strong><small id="fileDetails"></small></div>
+          <button type="button" class="text-button" id="changeFile">Cambiar</button>
+        </div>
+        <div class="info-line"><span>ⓘ</span> Se conservan las hojas, imágenes, encabezados y demás contenido del archivo.</div>
+      </div>
+
+      <div class="card people-card" id="peopleCard">
+        <div class="card-heading"><div><div class="section-number">02 / DISTRIBUCIÓN</div><h2>Asigna a las personas</h2></div><span class="card-icon">♧</span></div>
+        <label class="field-label" for="personCount">¿Entre cuántas personas se dividirá?</label>
+        <div class="count-control"><button type="button" id="minus" aria-label="Quitar una persona">−</button><input id="personCount" type="number" min="1" max="350" value="2" inputmode="numeric"><button type="button" id="plus" aria-label="Agregar una persona">+</button></div>
+        <p class="field-help" id="distributionNote">Carga un archivo para ver el reparto.</p>
+        <div class="people-list" id="peopleList"></div>
+      </div>
+    </section>
+
+    <section class="result-card" id="resultCard">
+      <div class="result-copy"><span class="result-kicker">03 / TU ARCHIVO FINAL</span><h2>Todo en orden, en el mismo formato.</h2><p>El orden se aplica a los RFC de izquierda a derecha, llenando cada columna de arriba abajo. Cada folio viaja con su RFC.</p></div>
+      <div class="result-actions"><div class="total" id="totalRecords">— <span>registros detectados</span></div><button id="generate" type="button" disabled>Generar y descargar Excel <span>↗</span></button></div>
+    </section>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+    <footer>ORDENADOR RFC <span>•</span> El archivo permanece en tu dispositivo.</footer>
+  </main>
+  <script src="./fflate.min.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
