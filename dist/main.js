@@ -336,6 +336,8 @@ function renderVerification() {
   $('joinForm').hidden = !!total;
   $('shareButton').disabled = !parsedBook || !!roomSecret;
   $('shareState').textContent = roomSecret ? 'Lista compartida · las marcas se sincronizan entre dispositivos.' : total ? 'Lista solo en este dispositivo. Crea el enlace para compartirla.' : 'Pega el enlace privado de equipo para ver el listado.';
+  $('openCamera').textContent = total ? '▣ Escanear con cámara' : 'Abre la lista para usar cámara';
+  document.querySelector('.photo-button').hidden = !total;
   for (const id of ['openCamera', 'photoInput', 'manualFolio', 'exportReport', 'folioSearch', 'pendingOnly', 'clearProgress']) $(id).disabled = !total;
   $('manualForm').querySelector('button').disabled = !total;
   const query = $('folioSearch').value.trim().toUpperCase();
@@ -409,7 +411,7 @@ function readRoomSecret(raw) {
 
 async function joinRoom(raw) {
   const secret = readRoomSecret(raw);
-  if (!secret) { showVerifyMessage('Pega el enlace privado completo del equipo.', true); return; }
+  if (!secret) { setMode('verify'); showVerifyMessage('Pega el enlace privado completo del equipo.', true); return; }
   roomSecret = secret;
   history.replaceState(null, '', roomLink());
   showVerifyMessage('Abriendo lista del equipo…');
