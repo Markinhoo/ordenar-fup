@@ -11,6 +11,7 @@ let verificationKey = '';
 let roomSecret = '';
 let sharedFileName = '';
 let syncBusy = false;
+const lastRoomKey = 'ordenar-fup:last-team-room';
 let cameraStream = null;
 let ocrWorker = null;
 let readingFolio = false;
@@ -281,6 +282,7 @@ async function loadFile(file) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     parsedBook = readBook(bytes); selectedFile = file;
     roomSecret = '';
+    try { localStorage.removeItem(lastRoomKey); } catch {}
     const url = new URL(location.href); url.searchParams.delete('s'); history.replaceState(null, '', url);
     await prepareVerification(bytes);
     $('fileName').textContent = file.name;
@@ -326,13 +328,14 @@ function showVerifyMessage(message, error = false) {
 function renderVerification() {
   const total = verification.length;
   $('verifyCount').textContent = `${verified.size} / ${total}`;
-  $('remainingCount').textContent = total ? `${total - verified.size} pendientes` : 'Carga un archivo para comenzar';
+  $('remainingCount').textContent = total ? `${total - verified.size} pendientes` : 'Abre el enlace del equipo para activar la cámara';
   $('progressFill').style.width = total ? `${verified.size / total * 100}%` : '0%';
   $('listTitle').textContent = $('pendingOnly').checked ? 'Folios pendientes' : 'Todos los folios';
   $('shareButton').hidden = !!roomSecret;
   $('copyLink').hidden = !roomSecret;
+  $('joinForm').hidden = !!total;
   $('shareButton').disabled = !parsedBook || !!roomSecret;
-  $('shareState').textContent = roomSecret ? 'Lista compartida · las marcas se sincronizan entre dispositivos.' : total ? 'Lista solo en este dispositivo. Crea el enlace para compartirla.' : 'Aún no hay una lista compartida.';
+  $('shareState').textContent = roomSecret ? 'Lista compartida · las marcas se sincronizan entre dispositivos.' : total ? 'Lista solo en este dispositivo. Crea el enlace para compartirla.' : 'Pega el enlace privado de equipo para ver el listado.';
   for (const id of ['openCamera', 'photoInput', 'manualFolio', 'exportReport', 'folioSearch', 'pendingOnly', 'clearProgress']) $(id).disabled = !total;
   $('manualForm').querySelector('button').disabled = !total;
   const query = $('folioSearch').value.trim().toUpperCase();
@@ -394,6 +397,25 @@ function roomLink() {
   const url = new URL(location.href); url.searchParams.set('s', roomSecret); return url.href;
 }
 
+function readRoomSecret(raw) {
+  const value = String(raw).trim();
+  if (/^[0-9a-f]{64}$/.test(value)) return value;
+  try {
+    const url = new URL(value);
+    const secret = url.searchParams.get('s') || '';
+    return url.origin === location.origin && /^[0-9a-f]{64}$/.test(secret) ? secret : '';
+  } catch { return ''; }
+}
+
+async function joinRoom(raw) {
+  const secret = readRoomSecret(raw);
+  if (!secret) { showVerifyMessage('Pega el enlace privado completo del equipo.', true); return; }
+  roomSecret = secret;
+  history.replaceState(null, '', roomLink());
+  showVerifyMessage('Abriendo lista del equipo…');
+  await syncRoom(true);
+}
+
 async function publishRoom() {
   if (!parsedBook || roomSecret) return;
   $('shareButton').disabled = true; $('shareState').textContent = 'Creando enlace…';
@@ -402,6 +424,7 @@ async function publishRoom() {
     const secret = await sharedRpc('create_room', { p_file_name: selectedFile.name, p_records: records });
     if (!/^[0-9a-f]{64}$/.test(secret)) throw new Error('La base de datos no devolvió un enlace válido.');
     roomSecret = secret; verificationKey = '';
+    try { localStorage.setItem(lastRoomKey, secret); } catch {}
     history.replaceState(null, '', roomLink()); renderVerification();
     showVerifyMessage('Enlace listo. Compártelo con quienes van a escanear.');
     await copyRoomLink();
@@ -425,8 +448,8 @@ async function syncRoom(initial = false) {
     const changed = initial || next.size !== verified.size || [...next].some((id) => !verified.has(id));
     verified = next;
     if (changed) renderVerification();
-    if (initial) { $('verifyFileName').textContent = sharedFileName; setMode('verify'); showVerifyMessage('Lista compartida cargada. Ya puedes escanear con tu equipo.'); }
-  } catch (error) { if (initial) { roomSecret = ''; renderVerification(); setMode('verify'); } showVerifyMessage(`Sincronización: ${error.message}`, true); }
+    if (initial) { try { localStorage.setItem(lastRoomKey, roomSecret); } catch {} $('verifyFileName').textContent = sharedFileName; setMode('verify'); showVerifyMessage('Lista compartida cargada. Ya puedes escanear con tu equipo.'); }
+  } catch (error) { if (initial) { try { localStorage.removeItem(lastRoomKey); } catch {} roomSecret = ''; renderVerification(); setMode('verify'); } showVerifyMessage(`Sincronización: ${error.message}`, true); }
   finally { syncBusy = false; }
 }
 
@@ -470,13 +493,20 @@ async function readImage(image) {
 
 async function openCamera() {
   if (!verification.length) return;
-  if (!navigator.mediaDevices?.getUserMedia) { showVerifyMessage('Tu navegador no permite abrir la cámara. Usa «Tomar o elegir foto».', true); return; }
+  if (!navigator.mediaDevices?.getUserMedia) { showVerifyMessage('Este navegador no permite escaneo en vivo. Toca «Abrir cámara para tomar foto».', true); return; }
   try {
     cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
     $('cameraVideo').srcObject = cameraStream;
     $('cameraModal').hidden = false;
     await $('cameraVideo').play();
-  } catch { closeCamera(); showVerifyMessage('No se pudo abrir la cámara. Revisa el permiso o usa «Tomar o elegir foto».', true); }
+  } catch (error) {
+    closeCamera();
+    const reason = error?.name === 'NotAllowedError' ? 'El permiso de cámara fue rechazado.'
+      : error?.name === 'NotFoundError' ? 'No se encontró una cámara en este dispositivo.'
+      : error?.name === 'NotReadableError' ? 'La cámara está ocupada por otra aplicación.'
+      : 'Este navegador no pudo abrir la cámara en vivo.';
+    showVerifyMessage(`${reason} Toca «Abrir cámara para tomar foto» o prueba en Chrome o Safari.`, true);
+  }
 }
 
 function closeCamera() {
@@ -505,7 +535,8 @@ function downloadReport() {
 }
 
 $('fileInput').addEventListener('change', (event) => loadFile(event.target.files[0]));
-$('verifyFileInput').addEventListener('change', (event) => loadFile(event.target.files[0]));
+$('verifyFileInput').addEventListener('change', async (event) => { await loadFile(event.target.files[0]); if (parsedBook && !roomSecret) await publishRoom(); });
+$('joinForm').addEventListener('submit', (event) => { event.preventDefault(); joinRoom($('joinLink').value); });
 $('shareButton').addEventListener('click', publishRoom);
 $('copyLink').addEventListener('click', copyRoomLink);
 $('organizeTab').addEventListener('click', () => setMode('organize'));
@@ -560,9 +591,8 @@ $('generate').addEventListener('click', () => {
 renderPeople();
 renderVerification();
 const linkSecret = new URL(location.href).searchParams.get('s');
-if (linkSecret) {
-  if (/^[0-9a-f]{64}$/.test(linkSecret)) { roomSecret = linkSecret; syncRoom(true); }
-  else { setMode('verify'); showVerifyMessage('El enlace de equipo no es válido.', true); }
-}
+let savedSecret = '';
+try { savedSecret = localStorage.getItem(lastRoomKey) || ''; } catch {}
+if (linkSecret || savedSecret) joinRoom(linkSecret || savedSecret);
 setInterval(() => syncRoom(), 4000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) syncRoom(); });

@@ -62,12 +62,13 @@
     <section id="verifyView" class="verify-view" hidden aria-label="Verificar documentos físicos">
       <div class="verify-tools card">
         <div class="card-heading"><div><div class="section-number">CONTROL DE DOCUMENTOS</div><h2>Verifica cada folio</h2></div><span class="card-icon">✓</span></div>
-        <p class="verify-help">Carga el Excel en la computadora, crea un enlace de equipo y ábrelo en los celulares. Todos verán las mismas palomitas.</p>
-        <label class="verify-file" for="verifyFileInput"><input id="verifyFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><span>↑</span><strong id="verifyFileName">Cargar Excel .xlsx</strong></label>
+        <p class="verify-help">Carga el Excel en la computadora y comparte el enlace de equipo. En cada celular, abre ese enlace una vez para activar la lista y la cámara.</p>
+        <form id="joinForm" class="join-form"><label for="joinLink">¿Ya tienes el enlace del equipo?</label><div><input id="joinLink" type="text" inputmode="url" autocomplete="off" placeholder="Pega aquí el enlace privado"><button type="submit">Entrar</button></div></form>
+        <label class="verify-file" for="verifyFileInput"><input id="verifyFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><span>↑</span><strong id="verifyFileName">Cargar Excel y crear enlace</strong></label>
         <div class="share-controls"><button id="shareButton" type="button" disabled>Crear enlace de equipo</button><button id="copyLink" type="button" hidden>Copiar enlace</button><small id="shareState">Aún no hay una lista compartida.</small></div>
         <div class="verify-progress"><strong id="verifyCount">0 / 0</strong><span>documentos verificados</span><div class="progress-track"><div id="progressFill"></div></div><small id="remainingCount">Carga un archivo para comenzar</small></div>
-        <button id="openCamera" class="primary-button" type="button" disabled>▣ Abrir cámara</button>
-        <label class="photo-button" for="photoInput">Tomar o elegir foto</label><input id="photoInput" class="visually-hidden" type="file" accept="image/*" capture="environment" disabled>
+        <button id="openCamera" class="primary-button" type="button" disabled>▣ Escanear con cámara</button>
+        <label class="photo-button" for="photoInput">Abrir cámara para tomar foto</label><input id="photoInput" class="visually-hidden" type="file" accept="image/*" capture="environment" disabled>
         <form id="manualForm" class="manual-form"><label for="manualFolio">O escribe el folio</label><div><input id="manualFolio" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="Ej. 40795" autocomplete="off" disabled><button type="submit" disabled>Marcar</button></div></form>
         <p id="verifyMessage" class="verify-message" role="status" aria-live="polite"></p>
       </div>
