@@ -296,7 +296,7 @@ async function loadFile(file) {
 }
 
 async function prepareVerification(bytes) {
-  verification = parsedBook.sheet.slots.map((slot, index) => ({ id: String(index), folio: slot.folio, digits: slot.folio.match(/^\s*(\d+)\s*$/)?.[1] || '', rfc: slot.rfc }));
+  verification = parsedBook.sheet.slots.map((slot, index) => ({ id: String(index), folio: slot.folio, digits: slot.folio.match(/^\s*(\d+)/)?.[1] || '', rfc: slot.rfc }));
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   verificationKey = 'ordenar-fup:verificacion:' + [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
   try { verified = new Set(JSON.parse(localStorage.getItem(verificationKey) || '[]').filter((id) => verification.some((item) => item.id === id))); }
@@ -382,9 +382,11 @@ async function readImage(image) {
     const { data } = await worker.recognize(image);
     const candidates = [...new Set((data.text.match(/\d{3,9}/g) || []).map((value) => value.trim()))];
     const known = candidates.filter((candidate) => verification.some((item) => item.digits === candidate));
-    if (known.length === 1 && candidates.length === 1 && data.confidence >= 45) {
-      const success = markFolio(known[0]);
+    if (known.length === 1 && data.confidence >= 45) {
+      const accepted = candidates.length === 1 || confirm(`La foto contiene varios números (${candidates.join(', ')}). ¿El folio del documento es ${known[0]}?`);
+      const success = accepted && markFolio(known[0]);
       $('cameraMessage').textContent = success ? `Leído: ${known[0]}. Coloca el siguiente documento.` : 'Comprueba el folio en la lista.';
+      if (!accepted) showVerifyMessage('No se marcó ningún folio. Acerca la cámara al número o escríbelo.');
     } else if (candidates.length > 1 || known.length > 1) {
       $('cameraMessage').textContent = `Se leyeron varios números: ${candidates.join(', ')}.`;
       showVerifyMessage('Se detectaron varios números. Acerca la cámara a un solo folio o escríbelo.', true);
