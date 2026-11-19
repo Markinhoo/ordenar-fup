@@ -169,7 +169,7 @@ function showSection(name) {
   }
   if (name === 'setup') {
     $('pageTitle').textContent = 'Preparar lote de trabajo';
-    $('batchMeta').textContent = 'Carga el Excel, elige la QNA y asigna los archivos físicos.';
+    $('batchMeta').textContent = 'Carga el Excel, elige la QNA y selecciona las personas.';
   } else if (name === 'waiting') {
     $('pageTitle').textContent = 'Verificación de documentos';
     $('batchMeta').textContent = 'Abre tu QR para acceder al listado asignado.';
