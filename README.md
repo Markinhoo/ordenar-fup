@@ -1,6 +1,6 @@
 # Ordenar FUP
 
-Aplicación estática para ordenar RFC y folios dentro de una plantilla Excel, repartir los registros entre personas con colores y verificar los documentos físicos por su número de folio. El archivo se procesa en el navegador.
+Aplicación React con Vite para ordenar RFC y folios dentro de una plantilla Excel, repartir los registros entre personas con colores y verificar los documentos físicos por su número de folio. El archivo se procesa en el navegador. El tema claro u oscuro se guarda en este proyecto.
 
 ## Nuevo control compartido de documentos
 
@@ -14,9 +14,7 @@ La información del nuevo control se guarda solo en tablas `v2_*` del esquema ai
 
 ## Verificación anterior
 
-Las salas anteriores permanecen guardadas, pero la portada ahora dirige al login. La cuenta administradora puede abrir una sala anterior con la ruta `organizar.html?s=...`; el control nuevo usa cuentas y QNAs.
-
-Antes de crear el acceso, el avance solo se guarda en el navegador asociado al Excel. Al crear el acceso, **folio, RFC y marcas** se guardan en el esquema aislado `"fup-sep"` de la base de datos Supabase del proyecto Aria. El Excel original y las fotos no se suben. El QR se dibuja en el navegador sin enviar la clave a un servicio externo. Quien tenga el QR o el enlace puede acceder a esa lista y marcar folios; el QR no identifica a la persona. El QR anterior sigue abriendo su lista anterior y no da acceso a una lista nueva. El reconocimiento usa Tesseract.js en el dispositivo; su código y modelo de idioma se descargan por Internet la primera vez que se usa.
+Las salas creadas antes del sistema de cuentas se conservan en `public/legacy/`. La ruta `organizar.html?s=...` redirige a esa vista antigua; el control actual usa cuentas y QNAs. El QR anterior solo abre su sala anterior.
 
 ## Base de datos
 
@@ -26,13 +24,25 @@ El SQL original está en `supabase/fup-sep.sql`, el control compartido en `supab
 
 ## Estructura
 
-- `dist/`: sitio listo para publicar, sin compilación.
-- `vercel.json`: indica a Vercel que publique `dist/`.
+- `src/pages/`: páginas React de control, organizador y activación.
+- `src/components/`: pantallas de acceso, cuentas, lote, lista, escáner y bitácora.
+- `src/lib/`: API, Excel, OCR, QR, QNA, descarga y tema.
+- `src/styles/`: estilos de cada vista y temas.
+- `public/legacy/`: compatibilidad de salas anteriores.
+- `dist/`: resultado generado por Vite; no se guarda en Git.
+- `vercel.json`: compila el proyecto y publica `dist/` en Vercel.
 
 ## Ejecutar en la computadora
 
-Con Node.js instalado, abre una terminal en `ordenar-fup` y ejecuta `npm run dev`. Después abre `http://127.0.0.1:5173`. No hace falta `npm install`: el servidor local usa solo Node.js y publica la carpeta `dist/`. Para detenerlo, presiona `Ctrl+C`.
+Con Node.js instalado, abre una terminal en `C:\Users\Marko\ordenar-fup` y ejecuta:
 
-El generador QR incluido en `dist/qrcode-generator.js` proviene de [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) y conserva su licencia MIT en `dist/qrcode-generator-LICENSE.txt`.
+```powershell
+npm install
+npm run dev
+```
+
+Abre la dirección local que muestre Vite (normalmente `http://127.0.0.1:5173`). Usa `npm run build` para comprobar la compilación y `Ctrl+C` para detener el servidor.
+
+El generador QR actual usa la dependencia [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator). La versión de las salas anteriores y su licencia se conservan en `public/legacy/`.
 
 El proyecto `ordenar-fup` en Vercel está conectado a la rama `main` de `Markinhoo/ordenar-fup`. Los cambios enviados a esa rama generan despliegues automáticos.

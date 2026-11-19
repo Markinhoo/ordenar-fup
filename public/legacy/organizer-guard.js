@@ -4,7 +4,7 @@ const config = window.FUP_SUPABASE;
 async function showOrganizer() {
   let session;
   try { session = JSON.parse(localStorage.getItem(sessionKey) || 'null'); } catch { session = null; }
-  if (!session?.access_token || !session?.refresh_token) return location.replace('./control.html');
+  if (!session?.access_token || !session?.refresh_token) return location.replace('../control.html');
 
   try {
     if (session.expires_at <= Date.now() + 60000) {
@@ -26,10 +26,10 @@ async function showOrganizer() {
         'Content-Type': 'application/json', 'Content-Profile': 'fup-sep' },
       body: '{}',
     });
-    if (!response.ok || !(await response.json()).isAdmin) return location.replace('./control.html');
+    if (!response.ok || !(await response.json()).isAdmin) return location.replace('../control.html');
     await import('./main.js');
     document.querySelector('.shell').hidden = false;
-  } catch { location.replace('./control.html'); }
+  } catch { location.replace('../control.html'); }
 }
 
 showOrganizer();

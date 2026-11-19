@@ -1,0 +1,170 @@
+import { useCallback, useEffect, useState } from 'react';
+import { accounts, lastBatchKey, logout, readSession, rpc } from '../lib/api';
+import { qnaLabel } from '../lib/qna';
+import { useTheme } from '../lib/theme';
+import ThemeToggle from '../components/ThemeToggle';
+import LoginPanel from '../components/LoginPanel';
+import AccountModal from '../components/AccountModal';
+import BatchSetup from '../components/BatchSetup';
+import BatchList from '../components/BatchList';
+import HistoryView from '../components/HistoryView';
+import ScanModal from '../components/ScanModal';
+
+export default function ControlPage() {
+  const [theme, toggleTheme] = useTheme();
+  const [session, setSession] = useState(readSession);
+  const [account, setAccount] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [batch, setBatch] = useState(null);
+  const [section, setSection] = useState('waiting');
+  const [notice, setNotice] = useState({ text: '', error: false });
+  const [accountView, setAccountView] = useState(null);
+  const [scanMode, setScanMode] = useState(null);
+  const [photo, setPhoto] = useState(null);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const [loading, setLoading] = useState(!!session);
+  const isAdmin = account?.isAdmin === true;
+  const message = useCallback((text, error = false) => setNotice({ text, error }), []);
+
+  const openBatch = useCallback(async (id) => {
+    const data = await rpc('v2_get_batch', { p_batch_id: id });
+    setBatch(data); setSection('list');
+    localStorage.setItem(lastBatchKey, id);
+    const url = new URL(location.href); url.searchParams.set('b', id); history.replaceState(null, '', url);
+    return data;
+  }, []);
+
+  const refreshBatch = useCallback(async (historyToo = false) => {
+    if (!batch?.id) return;
+    const data = await rpc('v2_get_batch', { p_batch_id: batch.id });
+    setBatch(data);
+    if (historyToo) setHistoryVersion((value) => value + 1);
+  }, [batch?.id]);
+
+  useEffect(() => {
+    if (!session) { setLoading(false); return; }
+    let active = true;
+    async function boot() {
+      setLoading(true);
+      try {
+        const profile = await accounts('profile');
+        if (!active) return;
+        setAccount(profile);
+        const [directory, owned] = await Promise.all([
+          profile.isAdmin ? accounts('list-users') : Promise.resolve({ users: [] }),
+          rpc('v2_list_batches'),
+        ]);
+        if (!active) return;
+        setUsers(directory.users); setBatches(owned);
+        const url = new URL(location.href);
+        if (url.searchParams.has('invite')) {
+          const claim = await rpc('v2_claim_worker', { p_token: url.searchParams.get('invite') });
+          url.searchParams.delete('invite'); url.searchParams.set('b', claim.batchId);
+          history.replaceState(null, '', url);
+          message(`Acceso activado para ${claim.name}.`);
+        }
+        const candidates = [...new Set([url.searchParams.get('b'), localStorage.getItem(lastBatchKey), owned[0]?.id].filter(Boolean))];
+        let opened = false;
+        for (const id of candidates) {
+          try { await openBatch(id); opened = true; break; }
+          catch (error) { if (id === url.searchParams.get('b')) message(error.message, true); }
+        }
+        if (!opened) setSection(profile.isAdmin ? 'setup' : 'waiting');
+        if (!profile.recoverySet) { setAccountView('me'); message('Configura tu pregunta de respaldo para recuperar tu acceso.'); }
+      } catch (error) {
+        if (!active) return;
+        message(error.message, true);
+        if (/sesión terminó|Inicia sesión/i.test(error.message)) { await logout(); setSession(null); setAccount(null); }
+        else setSection('waiting');
+      } finally { if (active) setLoading(false); }
+    }
+    boot();
+    return () => { active = false; };
+  }, [session?.access_token]);
+
+  useEffect(() => {
+    if (!batch?.id) return;
+    const timer = setInterval(() => {
+      if (document.hidden) return;
+      rpc('v2_get_batch', { p_batch_id: batch.id }).then(setBatch)
+        .catch((error) => message(`Sincronización: ${error.message}`, true));
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [batch?.id]);
+
+  useEffect(() => {
+    function escape(event) {
+      if (event.key !== 'Escape') return;
+      if (scanMode) { setScanMode(null); setPhoto(null); }
+      else if (accountView) setAccountView(null);
+    }
+    document.addEventListener('keydown', escape);
+    return () => document.removeEventListener('keydown', escape);
+  }, [scanMode, accountView]);
+
+  async function createBatch({ fileName, qna, records, workers }) {
+    message('Creando lote y asignaciones…');
+    try {
+      const created = await rpc('v2_create_batch', { p_file_name: fileName, p_qna: qna,
+        p_records: records, p_workers: workers });
+      setBatches(await rpc('v2_list_batches'));
+      await openBatch(created.batchId);
+      message('Lote creado. Entrega a cada persona su QR.');
+    } catch (error) { message(error.message, true); }
+  }
+
+  async function loadUsers() {
+    try { const result = await accounts('list-users'); setUsers(result.users); }
+    catch (error) { message(error.message, true); }
+  }
+
+  async function signOut() {
+    await logout(); setSession(null); setAccount(null); setUsers([]); setBatches([]); setBatch(null);
+    setSection('waiting'); setAccountView(null); setScanMode(null); setPhoto(null); message('');
+  }
+
+  const title = section === 'setup' ? 'Preparar lote de trabajo' : section === 'waiting' ? 'Verificación de documentos'
+    : batch?.isAdmin ? 'Control de la encargada' : 'Escaneo de documentos';
+  const meta = section === 'setup' ? 'Carga el Excel, elige la QNA y selecciona las personas.'
+    : section === 'waiting' ? 'Abre tu QR para acceder al listado asignado.'
+      : batch ? `${qnaLabel(batch.qna)} · ${batch.fileName} · ${batch.records.length} registros` : '';
+
+  return <div className="control-shell">
+    <header className="control-header">
+      <a className="control-brand" href="./control.html"><span>↧</span><strong>ORDENAR FUP</strong></a>
+      <div className="header-right"><ThemeToggle theme={theme} onToggle={toggleTheme} />
+        {session && account && <>
+          {isAdmin && <><a href="./organizar.html">Ordenar Excel</a><button type="button" onClick={() => { setAccountView('users'); loadUsers(); }}>Usuarios</button></>}
+          <button type="button" onClick={() => setAccountView('me')}>Mi cuenta</button>
+          <span>{session.email}</span><button type="button" onClick={signOut}>Salir</button>
+        </>}
+      </div>
+    </header>
+    {!session ? <LoginPanel onLogin={setSession} /> : loading || !account ? <main className="auth-panel"><div className="auth-card"><p role="status">{loading ? 'Cargando tu cuenta…' : 'No se pudo abrir tu cuenta.'}</p>{!loading && <><p className="message error">{notice.text}</p><button type="button" onClick={signOut}>Salir e intentar de nuevo</button></>}</div></main> : <main className="app-panel">
+      <div className="app-top"><div><p className="eyebrow">VERIFICACIÓN FUP</p><h1>{title}</h1><p>{meta}</p></div>
+        <div className="top-actions">
+          {isAdmin && batches.length > 0 && <><select aria-label="Elegir lote" value={batch?.id || ''} onChange={(event) => openBatch(event.target.value).catch((error) => message(error.message, true))}>
+            {batches.map((item) => <option key={item.id} value={item.id}>{qnaLabel(item.qna)} · {item.fileName}</option>)}
+          </select><button type="button" onClick={() => setSection('setup')}>Nuevo lote</button></>}
+        </div>
+      </div>
+      <nav className="control-tabs" aria-label="Secciones">
+        {isAdmin && <button type="button" className={section === 'setup' ? 'active' : ''} onClick={() => setSection('setup')}>Preparar lote</button>}
+        <button type="button" className={section === 'list' ? 'active' : ''} onClick={() => setSection(batch ? 'list' : isAdmin ? 'setup' : 'waiting')}>Listado y avance</button>
+        {isAdmin && batches.length > 0 && <button type="button" className={section === 'history' ? 'active' : ''} onClick={() => setSection('history')}>Bitácora por QNA</button>}
+      </nav>
+      <p className={`message${notice.error ? ' error' : ''}`} role="status" aria-live="polite">{notice.text}</p>
+      {isAdmin && <BatchSetup users={users} hidden={section !== 'setup'} onCreate={createBatch} onMessage={message} />}
+      <section className="section waiting-section" hidden={section !== 'waiting'}><div className="panel waiting-card"><h2>Listo para verificar</h2><p>Iniciaste sesión. Abre el QR que te entregó la encargada para entrar a tu listado y comenzar a escanear documentos.</p></div></section>
+      {batch && <><BatchList batch={batch} hidden={section !== 'list'} onMessage={message} onRefresh={refreshBatch}
+        onOpenScanner={() => setScanMode('camera')} onPhoto={(file) => { if (file) { setPhoto(file); setScanMode('photo'); } }} />
+        {isAdmin && <HistoryView batch={batch} batches={batches} hidden={section !== 'history'} version={historyVersion} onMessage={message} />}
+      </>}
+    </main>}
+    {account && <AccountModal account={account} users={users} view={accountView} onClose={() => setAccountView(null)}
+      onUsersChanged={loadUsers} onAccountChanged={setAccount} />}
+    {batch && !batch.isAdmin && <ScanModal batch={batch} mode={scanMode} photo={photo}
+      onClose={() => { setScanMode(null); setPhoto(null); }} onRefresh={refreshBatch} onMessage={message} />}
+  </div>;
+}
