@@ -162,3 +162,5 @@ footer{flex:none;margin-top:0;padding:7px 0 8px}
 .inline-qr small{font:500 10px/1.35 'DM Sans',sans-serif;color:#627466}
 .inline-qr button{border:0;border-radius:8px;background:#315e48;color:#fff;padding:8px 10px;font:800 10px 'DM Sans',sans-serif;cursor:pointer}
 @media(max-width:760px){.inline-qr{gap:9px;padding:5px;margin-top:4px}.inline-qr canvas{width:104px;height:104px}.inline-qr strong{font-size:10px}.inline-qr small{font-size:9px}.inline-qr button{padding:6px 8px;font-size:9px}}
+body:has(#verifyView:not([hidden])) .hero,body:has(#verifyView:not([hidden])) footer{display:none}
+@media(max-width:760px){body:has(#verifyView:not([hidden])) .verify-view{grid-template-rows:minmax(0,1.45fr) minmax(0,.8fr)}.inline-qr canvas{width:90px;height:90px}}
