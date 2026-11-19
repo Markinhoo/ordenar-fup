@@ -5,6 +5,8 @@ import { distribute } from '../lib/qna';
 import { downloadBlob } from '../lib/download';
 import { useTheme } from '../lib/theme';
 import ThemeToggle from '../components/ThemeToggle';
+import '../styles/organizer.css';
+import '../styles/organizer-react.css';
 
 export default function OrganizerPage() {
   const [theme, toggleTheme] = useTheme();
@@ -20,9 +22,9 @@ export default function OrganizerPage() {
   const sizes = useMemo(() => book ? distribute(book.sheet.slots.length, count) : [], [book, count]);
 
   useEffect(() => {
-    if (!readSession()) { location.replace('./control.html'); return; }
-    isAdmin().then((admin) => admin ? setReady(true) : location.replace('./control.html'))
-      .catch(() => location.replace('./control.html'));
+    if (!readSession()) { location.replace('/'); return; }
+    isAdmin().then((admin) => admin ? setReady(true) : location.replace('/'))
+      .catch(() => location.replace('/'));
   }, []);
 
   async function loadFile(nextFile) {
@@ -61,14 +63,14 @@ export default function OrganizerPage() {
 
   return <main className="shell">
     <header className="topbar"><div className="brand"><span className="brand-mark">↧</span><span>ORDENAR <b>FUP</b></span></div>
-      <div className="organizer-header-actions"><span className="private-pill"><span className="private-dot" /> Excel local · control compartido</span><ThemeToggle theme={theme} onToggle={toggleTheme} /><a href="./control.html">Control</a></div>
+      <div className="organizer-header-actions"><span className="private-pill"><span className="private-dot" /> Excel local · control compartido</span><ThemeToggle theme={theme} onToggle={toggleTheme} /><a href="/">Control</a></div>
     </header>
     <section className="hero"><div className="eyebrow"><span className="eyebrow-line" /> ORGANIZA TU LISTADO</div>
       <h1>Tu Excel FUP,<br /><em>ordenado y verificado.</em></h1>
       <p>Ordena y reparte los registros, o comprueba con la cámara que cada documento físico esté en tu listado.</p>
     </section>
     <nav className="mode-tabs" aria-label="Herramientas"><button className="selected" type="button" aria-pressed="true">Ordenar y repartir</button>
-      <a href="./control.html">Verificar documentos</a></nav>
+      <a href="/">Verificar documentos</a></nav>
     <div className="organize-view">
       <div className="steps"><span className="active">01 <b>Archivo</b></span><i /><span className={book ? 'active' : ''}>02 <b>Personas</b></span><i /><span className={status.startsWith('Excel generado') ? 'active' : ''}>03 <b>Descarga</b></span></div>
       <section className="work-grid">

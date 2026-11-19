@@ -1,5 +1,15 @@
 {
   "framework": "vite",
   "buildCommand": "npm run build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/control", "destination": "/index.html" },
+    { "source": "/organizar", "destination": "/index.html" },
+    { "source": "/activar", "destination": "/index.html" },
+    { "source": "/sala", "destination": "/index.html" },
+    { "source": "/control.html", "destination": "/index.html" },
+    { "source": "/organizar.html", "destination": "/index.html" },
+    { "source": "/activar.html", "destination": "/index.html" },
+    { "source": "/legacy/organizar.html", "destination": "/index.html" }
+  ]
 }

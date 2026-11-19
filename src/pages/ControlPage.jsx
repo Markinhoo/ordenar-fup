@@ -9,6 +9,7 @@ import BatchSetup from '../components/BatchSetup';
 import BatchList from '../components/BatchList';
 import HistoryView from '../components/HistoryView';
 import ScanModal from '../components/ScanModal';
+import '../styles/control.css';
 
 export default function ControlPage() {
   const [theme, toggleTheme] = useTheme();
@@ -132,10 +133,10 @@ export default function ControlPage() {
 
   return <div className="control-shell">
     <header className="control-header">
-      <a className="control-brand" href="./control.html"><span>↧</span><strong>ORDENAR FUP</strong></a>
+      <a className="control-brand" href="/"><span>↧</span><strong>ORDENAR FUP</strong></a>
       <div className="header-right"><ThemeToggle theme={theme} onToggle={toggleTheme} />
         {session && account && <>
-          {isAdmin && <><a href="./organizar.html">Ordenar Excel</a><button type="button" onClick={() => { setAccountView('users'); loadUsers(); }}>Usuarios</button></>}
+          {isAdmin && <><a href="/organizar">Ordenar Excel</a><button type="button" onClick={() => { setAccountView('users'); loadUsers(); }}>Usuarios</button></>}
           <button type="button" onClick={() => setAccountView('me')}>Mi cuenta</button>
           <span>{session.email}</span><button type="button" onClick={signOut}>Salir</button>
         </>}

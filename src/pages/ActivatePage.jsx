@@ -40,6 +40,6 @@ export default function ActivatePage() {
       <button disabled={busy}>Activar mi cuenta</button>
     </form>}
     <p className={done ? 'ok' : 'error'} role="status">{valid ? message : 'Enlace de activación inválido. Solicita uno nuevo a la persona encargada.'}</p>
-    <a href="./control.html">{done ? 'Iniciar sesión' : 'Volver al acceso'}</a>
+    <a href="/">{done ? 'Iniciar sesión' : 'Volver al acceso'}</a>
   </div></div>;
 }

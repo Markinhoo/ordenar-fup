@@ -1,6 +1,7 @@
 .fup-theme-toggle{display:inline-flex;align-items:center;gap:7px;border:1px solid #b9cdb9;border-radius:999px;background:#e8f0e5;color:#315e48;padding:7px 11px;font:700 11px 'DM Sans',sans-serif;white-space:nowrap;cursor:pointer}
 .fup-theme-toggle span:first-child{font-size:16px;line-height:1}
 .fup-theme-toggle:focus-visible{outline:2px solid #5b916a;outline-offset:2px}
+.app-loading{min-height:100dvh;display:grid;place-items:center;font:600 15px sans-serif;color:#315e48}
 :root[data-theme='dark']{color-scheme:dark}
 :root[data-theme='dark'] body{background:#111a17;color:#e5efe7}
 :root[data-theme='dark'] .control-header{border-color:#2d4135}

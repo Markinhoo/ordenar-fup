@@ -14,22 +14,22 @@ La información del nuevo control se guarda solo en tablas `v2_*` del esquema ai
 
 ## Verificación anterior
 
-Las salas creadas antes del sistema de cuentas se conservan en `public/legacy/`. La ruta `organizar.html?s=...` redirige a esa vista antigua; el control actual usa cuentas y QNAs. El QR anterior solo abre su sala anterior.
+Las salas creadas antes del sistema de cuentas se abren ahora en una pantalla React. Los enlaces anteriores `organizar.html?s=...` siguen funcionando y muestran esa sala; los QR nuevos de esas salas usan `/sala?s=...`. El control actual usa cuentas y QNAs.
 
 ## Base de datos
 
-La activación inicial usa `supabase/fup-sep-v5.sql`. La consulta `select "fup-sep".v4_issue_admin_activation();` genera un token aleatorio que vence en 24 horas. El token se entrega al administrador en el fragmento `#token=` de `activar.html` y no se guarda en GitHub. `supabase/fup-sep-v6.sql` convierte las QNA anteriores al formato `AAAANN` y hace el reparto en el servidor a partir de la cantidad de registros y personas.
+La activación inicial usa `supabase/fup-sep-v5.sql`. La consulta `select "fup-sep".v4_issue_admin_activation();` genera un token aleatorio que vence en 24 horas. El token se entrega al administrador en el fragmento `#token=` de `/activar` y no se guarda en GitHub. La ruta anterior `activar.html` también funciona. `supabase/fup-sep-v6.sql` convierte las QNA anteriores al formato `AAAANN` y hace el reparto en el servidor a partir de la cantidad de registros y personas.
 
 El SQL original está en `supabase/fup-sep.sql`, el control compartido en `supabase/fup-sep-v2.sql`, la restricción de administrador en `supabase/fup-sep-v3.sql` y el directorio de cuentas y recuperación en `supabase/fup-sep-v4.sql`. El esquema `fup-sep` debe permanecer en **Exposed schemas** de Data API. Las tablas nuevas tienen RLS y no conceden acceso directo a visitantes. La lista de administradores vive en `"fup-sep".v2_admin_accounts`. La función `supabase/functions/fup-accounts/index.ts` se publica en Supabase y usa la clave de servicio que Supabase le proporciona internamente. No se guarda esa clave en Vercel ni en GitHub.
 
 ## Estructura
 
-- `src/pages/`: páginas React de control, organizador y activación.
+- `index.html`: única entrada HTML necesaria para montar React.
+- `src/pages/`: pantallas React de control, organizador, activación y salas anteriores.
 - `src/components/`: pantallas de acceso, cuentas, lote, lista, escáner y bitácora.
 - `src/lib/`: API, Excel, OCR, QR, QNA, descarga y tema.
 - `src/styles/`: estilos de cada vista y temas.
-- `public/legacy/`: compatibilidad de salas anteriores.
-- `dist/`: resultado generado por Vite; no se guarda en Git.
+- `dist/`: resultado generado por Vite; contiene una copia compilada de `index.html` y no se guarda en Git.
 - `vercel.json`: compila el proyecto y publica `dist/` en Vercel.
 
 ## Ejecutar en la computadora
@@ -43,6 +43,6 @@ npm run dev
 
 Abre la dirección local que muestre Vite (normalmente `http://127.0.0.1:5173`). Usa `npm run build` para comprobar la compilación y `Ctrl+C` para detener el servidor.
 
-El generador QR actual usa la dependencia [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator). La versión de las salas anteriores y su licencia se conservan en `public/legacy/`.
+El generador QR usa la dependencia [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator).
 
 El proyecto `ordenar-fup` en Vercel está conectado a la rama `main` de `Markinhoo/ordenar-fup`. Los cambios enviados a esa rama generan despliegues automáticos.

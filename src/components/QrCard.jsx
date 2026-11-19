@@ -5,7 +5,7 @@ import { qnaLabel } from '../lib/qna';
 export default function QrCard({ worker, qna }) {
   const canvas = useRef(null);
   useEffect(() => {
-    const url = new URL('./control.html', location.href);
+    const url = new URL('/', location.href);
     url.searchParams.set('invite', worker.token);
     drawQr(canvas.current, url.href);
   }, [worker.token]);
