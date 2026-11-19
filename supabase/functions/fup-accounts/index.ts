@@ -117,6 +117,27 @@ Deno.serve(async (request) => {
       return reply({ ok: true }, 200, origin);
     }
 
+    if (input.action === 'activate-admin') {
+      const token = String(input.token || '');
+      const question = String(input.question || '').trim();
+      const answer = normalizedAnswer(input.answer);
+      if (!/^[a-f0-9]{64}$/.test(token) || !validPassword(input.password) ||
+          question.length < 10 || question.length > 160 || answer.length < 8 || answer.length > 160)
+        return reply({ error: 'Completa el enlace, contraseña y pregunta de respaldo' }, 400, origin);
+      const userId = await supabase('/rest/v1/rpc/v4_consume_admin_activation', 'POST',
+        { p_token: token }, secretKey, 'fup-sep');
+      if (!userId) return reply({ error: 'El enlace ya se usó o venció' }, 403, origin);
+      const account = await accountByUser(userId);
+      if (!account || account.email !== 'nomina@fup.com')
+        return reply({ error: 'Cuenta administradora no disponible' }, 403, origin);
+      await supabase(`/auth/v1/admin/users/${userId}`, 'PUT', { password: input.password });
+      const salt = crypto.randomUUID();
+      await supabase(`/rest/v1/v3_accounts?user_id=eq.${encodeURIComponent(userId)}`, 'PATCH',
+        { recovery_question: question, recovery_salt: salt, recovery_hash: await answerHash(answer, salt),
+          recovery_attempts: 0, recovery_locked_until: null }, secretKey, 'fup-sep');
+      return reply({ ok: true }, 200, origin);
+    }
+
     const user = await currentUser(request);
     if (!user) return reply({ error: 'Inicia sesión' }, 401, origin);
     const admin = await isAdmin(user);
