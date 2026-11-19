@@ -165,3 +165,4 @@ footer{flex:none;margin-top:0;padding:7px 0 8px}
 body:has(#verifyView:not([hidden])) .hero,body:has(#verifyView:not([hidden])) footer{display:none}
 @media(max-width:760px){body:has(#verifyView:not([hidden])) .verify-view{grid-template-rows:minmax(0,1.45fr) minmax(0,.8fr)}.inline-qr canvas{width:90px;height:90px}}
 body:has(#inlineQr:not([hidden])) .verify-help,body:has(#inlineQr:not([hidden])) #shareState{display:none}
+[hidden]{display:none!important}

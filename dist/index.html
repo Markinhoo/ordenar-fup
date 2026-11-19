@@ -3,92 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="referrer" content="no-referrer">
-  <meta name="theme-color" content="#f5f3ec">
-  <title>Ordenar FUP</title>
-  <meta name="description" content="Ordena tu Excel FUP y verifica con la cámara los folios de tus documentos físicos.">
-  <link rel="stylesheet" href="./style.css">
+  <meta name="robots" content="noindex">
+  <title>Entrar · Ordenar FUP</title>
+  <meta http-equiv="refresh" content="0;url=./control.html">
+  <script>location.replace(new URL('./control.html' + location.search + location.hash, location.href));</script>
 </head>
-<body>
-  <main class="shell">
-    <header class="topbar">
-      <div class="brand"><span class="brand-mark">↧</span><span>ORDENAR <b>FUP</b></span></div>
-      <span class="private-pill"><span class="private-dot"></span> Excel local · control compartido</span>
-    </header>
-
-    <section class="hero">
-      <div class="eyebrow"><span class="eyebrow-line"></span> ORGANIZA TU LISTADO</div>
-      <h1>Tu Excel FUP,<br><em>ordenado y verificado.</em></h1>
-      <p>Ordena y reparte los registros, o comprueba con la cámara que cada documento físico esté en tu listado.</p>
-    </section>
-
-    <nav class="mode-tabs" aria-label="Herramientas"><button id="organizeTab" class="selected" type="button" aria-pressed="true">Ordenar y repartir</button><button id="verifyTab" type="button" aria-pressed="false">Verificar documentos</button></nav>
-
-    <div id="organizeView" class="organize-view">
-    <div class="steps"><span class="active">01 <b>Archivo</b></span><i></i><span id="stepTwo">02 <b>Personas</b></span><i></i><span id="stepThree">03 <b>Descarga</b></span></div>
-
-    <section class="work-grid">
-      <div class="card file-card">
-        <div class="card-heading"><div><div class="section-number">01 / ARCHIVO DE ORIGEN</div><h2>Sube tu listado</h2></div><span class="card-icon">▦</span></div>
-        <label class="dropzone" id="dropzone" for="fileInput">
-          <input id="fileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-          <span class="upload-icon">↑</span>
-          <strong id="uploadTitle">Arrastra tu Excel aquí</strong>
-          <span id="uploadSubtitle">o haz clic para elegir un archivo .xlsx</span>
-        </label>
-        <div class="file-summary" id="fileSummary" hidden>
-          <div class="summary-icon">XLSX</div>
-          <div><strong id="fileName"></strong><small id="fileDetails"></small></div>
-          <button type="button" class="text-button" id="changeFile">Cambiar</button>
-        </div>
-        <div class="info-line"><span>ⓘ</span> Se conservan las hojas, imágenes, encabezados y demás contenido del archivo.</div>
-      </div>
-
-      <div class="card people-card" id="peopleCard">
-        <div class="card-heading"><div><div class="section-number">02 / DISTRIBUCIÓN</div><h2>Asigna a las personas</h2></div><span class="card-icon">♧</span></div>
-        <label class="field-label" for="personCount">¿Entre cuántas personas se dividirá?</label>
-        <div class="count-control"><button type="button" id="minus" aria-label="Quitar una persona">−</button><input id="personCount" type="number" min="1" max="350" value="2" inputmode="numeric"><button type="button" id="plus" aria-label="Agregar una persona">+</button></div>
-        <p class="field-help" id="distributionNote">Carga un archivo para ver el reparto.</p>
-        <div class="people-list" id="peopleList"></div>
-      </div>
-    </section>
-
-    <section class="result-card" id="resultCard">
-      <div class="result-copy"><span class="result-kicker">03 / TU ARCHIVO FINAL</span><h2>Todo en orden, en el mismo formato.</h2><p>El orden se aplica a los RFC de izquierda a derecha, llenando cada columna de arriba abajo. Cada folio viaja con su RFC.</p></div>
-      <div class="result-actions"><div class="total" id="totalRecords">— <span>registros detectados</span></div><button id="generate" type="button" disabled>Generar y descargar Excel <span>↗</span></button></div>
-    </section>
-    </div>
-
-    <section id="verifyView" class="verify-view" hidden aria-label="Verificar documentos físicos">
-      <div class="verify-tools card">
-        <div class="card-heading"><div><div class="section-number">CONTROL DE DOCUMENTOS</div><h2>Verifica cada folio</h2></div><span class="card-icon">✓</span></div>
-        <p class="verify-help">Carga el Excel en la computadora y muestra el QR al equipo. Cada archivo genera un QR nuevo para abrir su lista en el celular.</p>
-        <form id="joinForm" class="join-form"><label for="joinLink">¿Ya tienes el enlace del equipo?</label><div><input id="joinLink" type="text" inputmode="url" autocomplete="off" placeholder="Pega aquí el enlace privado"><button type="submit">Entrar</button></div></form>
-        <label class="verify-file" for="verifyFileInput"><input id="verifyFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><span>↑</span><strong id="verifyFileName">Cargar Excel y crear QR</strong></label>
-        <div class="inline-qr" id="inlineQr" hidden><canvas id="roomQr" role="img" aria-label="Código QR para abrir la lista privada"></canvas><div><strong>QR de acceso del equipo</strong><small>Escanéalo con la cámara del celular para abrir esta lista.</small><button id="downloadQr" type="button">Descargar QR</button></div></div>
-        <div class="share-controls"><button id="shareButton" type="button" disabled>Crear acceso de equipo</button><button id="copyLink" type="button" hidden>Copiar enlace</button><small id="shareState">Aún no hay una lista compartida.</small></div>
-        <div class="verify-progress"><strong id="verifyCount">0 / 0</strong><span>documentos verificados</span><div class="progress-track"><div id="progressFill"></div></div><small id="remainingCount">Carga un archivo para comenzar</small></div>
-        <button id="openCamera" class="primary-button" type="button" disabled>▣ Escanear con cámara</button>
-        <label class="photo-button" for="photoInput">Abrir cámara para tomar foto</label><input id="photoInput" class="visually-hidden" type="file" accept="image/*" capture="environment" disabled>
-        <form id="manualForm" class="manual-form"><label for="manualFolio">O escribe el folio</label><div><input id="manualFolio" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="Ej. 40795" autocomplete="off" disabled><button type="submit" disabled>Marcar</button></div></form>
-        <p id="verifyMessage" class="verify-message" role="status" aria-live="polite"></p>
-      </div>
-      <div class="verify-list-card card">
-        <div class="verify-list-heading"><div><div class="section-number">LISTADO DEL EXCEL</div><h2 id="listTitle">Folios pendientes</h2></div><button id="exportReport" type="button" disabled>Descargar CSV</button></div>
-        <div class="list-controls"><input id="folioSearch" type="search" placeholder="Buscar folio o RFC" aria-label="Buscar folio o RFC" disabled><label><input id="pendingOnly" type="checkbox" disabled> Solo pendientes</label></div>
-        <div class="verify-list" id="verifyList"><p class="empty-list">Carga tu Excel para ver los folios.</p></div>
-        <button id="clearProgress" class="clear-progress" type="button" disabled>Reiniciar verificación</button>
-      </div>
-    </section>
-    <p class="status" id="status" role="status" aria-live="polite"></p>
-    <footer>ORDENAR FUP <span>•</span> El Excel original permanece en tu dispositivo.</footer>
-  </main>
-
-  <div class="camera-modal" id="cameraModal" hidden role="dialog" aria-modal="true" aria-label="Escanear folio"><div class="camera-panel"><div class="camera-header"><strong>Escanear No. de documento</strong><button id="closeCamera" type="button" aria-label="Cerrar cámara">×</button></div><div class="camera-preview"><video id="cameraVideo" autoplay playsinline muted></video><div class="scan-frame"><span>Coloca aquí solo el número de folio</span></div></div><p id="cameraMessage" role="status" aria-live="polite">Acerca la cámara hasta que el número se vea nítido.</p><button id="captureFolio" class="primary-button" type="button">Leer folio</button></div></div>
-  <script src="./fflate.min.js"></script>
-  <script src="./qrcode-generator.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
-  <script src="./shared-config.js"></script>
-  <script type="module" src="./main.js"></script>
-</body>
+<body><p>Abriendo acceso de Ordenar FUP… <a href="./control.html">Entrar</a></p></body>
 </html>

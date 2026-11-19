@@ -10,14 +10,14 @@
 <body>
   <div class="control-shell">
     <header class="control-header">
-      <a class="control-brand" href="./index.html"><span>↧</span><strong>ORDENAR FUP</strong></a>
-      <div class="header-right"><a href="./index.html">Ordenar Excel</a><span id="signedEmail"></span><button id="logout" type="button" hidden>Salir</button></div>
+      <a class="control-brand" href="./control.html"><span>↧</span><strong>ORDENAR FUP</strong></a>
+      <div class="header-right"><a id="organizerLink" href="./organizar.html" hidden>Ordenar Excel</a><span id="signedEmail"></span><button id="logout" type="button" hidden>Salir</button></div>
     </header>
 
     <main id="authPanel" class="auth-panel">
       <div class="auth-card">
         <p class="eyebrow">CONTROL COMPARTIDO</p>
-        <h1>Entra para verificar documentos</h1>
+        <h1>Inicia sesión en Ordenar FUP</h1>
         <p id="inviteNotice">La encargada carga el Excel y asigna a cada persona su propio QR. Todos ven el avance en tiempo real.</p>
         <form id="authForm">
           <label>Correo electrónico<input id="authEmail" type="email" autocomplete="email" required></label>
@@ -56,6 +56,10 @@
           <p id="allocationNotice" class="allocation-notice"></p>
           <button id="createBatch" class="primary" type="button" disabled>Crear lote y códigos QR</button>
         </div>
+      </section>
+
+      <section id="waitingSection" class="section waiting-section" hidden>
+        <div class="panel waiting-card"><h2>Listo para verificar</h2><p>Iniciaste sesión. Abre el QR que te entregó la encargada para entrar a tu listado y comenzar a escanear documentos.</p></div>
       </section>
 
       <section id="listSection" class="section list-section" hidden>

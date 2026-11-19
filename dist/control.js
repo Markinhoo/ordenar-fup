@@ -2,7 +2,7 @@ const $ = (id) => document.getElementById(id);
 const config = window.FUP_SUPABASE;
 const sessionKey = 'ordenar-fup:auth-session';
 const lastBatchKey = 'ordenar-fup:last-v2-batch';
-const state = { session: null, batch: null, batches: [], fileRecords: [], fileName: '', section: 'setup', history: [], historyMore: false, scan: null, stream: null, ocr: null, reading: false, busy: false };
+const state = { session: null, isAdmin: false, batch: null, batches: [], fileRecords: [], fileName: '', section: 'waiting', history: [], historyMore: false, scan: null, stream: null, ocr: null, reading: false, busy: false };
 
 function message(text, error = false, target = 'appMessage') {
   $(target).textContent = text;
@@ -55,17 +55,22 @@ async function rpc(name, params = {}) {
 
 function showAuth() {
   $('authPanel').hidden = false; $('appPanel').hidden = true;
-  $('logout').hidden = true; $('signedEmail').textContent = '';
+  $('logout').hidden = true; $('organizerLink').hidden = true; $('signedEmail').textContent = '';
   const invite = new URL(location.href).searchParams.get('invite');
   $('inviteNotice').textContent = invite
     ? 'Este QR está asignado a un correo específico. Entra o crea tu cuenta con ese mismo correo para abrir tu listado.'
-    : 'La encargada carga el Excel y asigna a cada persona su propio QR. Todos ven el avance en tiempo real.';
+    : 'La cuenta administradora carga el Excel; el equipo verifica los documentos. Todos inician sesión primero.';
 }
 
 async function showApp() {
   $('authPanel').hidden = true; $('appPanel').hidden = false;
   $('logout').hidden = false; $('signedEmail').textContent = state.session.email;
-  try { await bootstrap(); } catch (error) { message(error.message, true); showSection('setup'); }
+  try {
+    state.isAdmin = (await rpc('v2_my_role')).isAdmin === true;
+    $('organizerLink').hidden = !state.isAdmin;
+    $('setupTab').hidden = !state.isAdmin;
+    await bootstrap();
+  } catch (error) { message(error.message, true); showSection(state.isAdmin ? 'setup' : 'waiting'); }
 }
 
 async function bootstrap() {
@@ -84,7 +89,7 @@ async function bootstrap() {
     try { await openBatch(batchId); return; }
     catch (error) { if (batchId === url.searchParams.get('b')) message(error.message, true); }
   }
-  showSection('setup');
+  showSection(state.isAdmin ? 'setup' : 'waiting');
 }
 
 async function refreshBatches() {
@@ -94,9 +99,9 @@ async function refreshBatches() {
     const option = document.createElement('option'); option.value = batch.id;
     option.textContent = `${batch.qna} · ${batch.fileName}`; selector.appendChild(option);
   }
-  selector.hidden = !state.batches.length;
-  $('historyTab').hidden = !state.batches.length;
-  $('newBatch').hidden = !state.batches.length;
+  selector.hidden = !state.isAdmin || !state.batches.length;
+  $('historyTab').hidden = !state.isAdmin || !state.batches.length;
+  $('newBatch').hidden = !state.isAdmin || !state.batches.length;
   const qnas = [...new Set(state.batches.map((batch) => batch.qna))].sort().reverse();
   $('historyQna').replaceChildren(new Option('Todas las QNAs', ''), ...qnas.map((qna) => new Option(qnaLabel(qna), qna)));
 }
@@ -123,16 +128,20 @@ async function openBatch(id) {
 }
 
 function showSection(name) {
-  if (name === 'history' && !state.batch?.isAdmin) name = 'list';
-  if (name === 'setup' && state.batch && !state.batch.isAdmin) name = 'list';
+  if (name === 'history' && !state.batch?.isAdmin) name = state.batch ? 'list' : 'waiting';
+  if (name === 'setup' && !state.isAdmin) name = state.batch ? 'list' : 'waiting';
+  if (name === 'list' && !state.batch) name = state.isAdmin ? 'setup' : 'waiting';
   state.section = name;
-  for (const section of ['setup', 'list', 'history']) {
+  for (const section of ['setup', 'waiting', 'list', 'history']) {
     $(`${section}Section`).hidden = section !== name;
-    $(`${section}Tab`).classList.toggle('active', section === name);
+    if (section !== 'waiting') $(`${section}Tab`).classList.toggle('active', section === name);
   }
   if (name === 'setup') {
     $('pageTitle').textContent = 'Preparar lote de trabajo';
     $('batchMeta').textContent = 'Carga el Excel, elige la QNA y asigna los archivos físicos.';
+  } else if (name === 'waiting') {
+    $('pageTitle').textContent = 'Verificación de documentos';
+    $('batchMeta').textContent = 'Abre tu QR para acceder al listado asignado.';
   } else if (state.batch) {
     $('pageTitle').textContent = state.batch.isAdmin ? 'Control de la encargada' : 'Escaneo de documentos';
     $('batchMeta').textContent = `${qnaLabel(state.batch.qna)} · ${state.batch.fileName} · ${state.batch.records.length} registros`;
@@ -218,7 +227,7 @@ async function loadFile(file) {
 }
 
 async function createBatch() {
-  if (!state.fileRecords.length || state.busy) return;
+  if (!state.isAdmin || !state.fileRecords.length || state.busy) return;
   const workers = [...$('workerRows').children].map((row) => ({
     name: row.querySelector('.worker-name').value.trim(), email: row.querySelector('.worker-email').value.trim().toLowerCase(),
     target: Number(row.querySelector('.worker-target').value),
@@ -573,7 +582,7 @@ async function register() {
 
 function logout() {
   if (state.session) authRequest('logout', {}, state.session.access_token).catch(() => {});
-  localStorage.removeItem(sessionKey); state.session = null; state.batch = null;
+  localStorage.removeItem(sessionKey); state.session = null; state.batch = null; state.isAdmin = false;
   showAuth();
 }
 
