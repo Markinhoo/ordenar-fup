@@ -11,7 +11,6 @@ let verificationKey = '';
 let roomSecret = '';
 let sharedFileName = '';
 let syncBusy = false;
-let qrPreviousFocus = null;
 const lastRoomKey = 'ordenar-fup:last-team-room';
 let cameraStream = null;
 let ocrWorker = null;
@@ -333,7 +332,8 @@ function renderVerification() {
   $('progressFill').style.width = total ? `${verified.size / total * 100}%` : '0%';
   $('listTitle').textContent = $('pendingOnly').checked ? 'Folios pendientes' : 'Todos los folios';
   $('shareButton').hidden = !!roomSecret;
-  $('showQr').hidden = !roomSecret;
+  $('inlineQr').hidden = !roomSecret;
+  if (roomSecret) renderRoomQr();
   $('copyLink').hidden = !roomSecret;
   $('joinForm').hidden = !!total;
   $('shareButton').disabled = !parsedBook || !!roomSecret;
@@ -381,7 +381,7 @@ function setMode(mode) {
   $('organizeTab').classList.toggle('selected', !verifyMode); $('verifyTab').classList.toggle('selected', verifyMode);
   $('organizeTab').setAttribute('aria-pressed', String(!verifyMode)); $('verifyTab').setAttribute('aria-pressed', String(verifyMode));
   $('status').hidden = verifyMode;
-  if (!verifyMode) { closeCamera(); closeRoomQr(); }
+  if (!verifyMode) closeCamera();
 }
 
 async function sharedRpc(name, params) {
@@ -401,8 +401,8 @@ function roomLink() {
   const url = new URL(location.href); url.searchParams.set('s', roomSecret); return url.href;
 }
 
-function showRoomQr() {
-  if (!roomSecret) return;
+function renderRoomQr() {
+  if (!roomSecret || $('roomQr').dataset.secret === roomSecret) return;
   try {
     if (typeof qrcode !== 'function') throw new Error('No se pudo cargar el generador de QR.');
     const code = qrcode(0, 'M');
@@ -422,21 +422,12 @@ function showRoomQr() {
         if (code.isDark(row, col)) context.fillRect((col + margin) * scale, (row + margin) * scale, scale, scale);
       }
     }
-    $('qrFileName').textContent = sharedFileName;
-    qrPreviousFocus = document.activeElement;
-    $('qrModal').hidden = false;
-    $('closeQr').focus();
+    canvas.dataset.secret = roomSecret;
   } catch (error) { showVerifyMessage(error.message, true); }
 }
 
-function closeRoomQr() {
-  if ($('qrModal').hidden) return;
-  $('qrModal').hidden = true;
-  qrPreviousFocus?.focus();
-}
-
 function downloadRoomQr() {
-  if ($('qrModal').hidden) return;
+  if (!roomSecret || $('roomQr').dataset.secret !== roomSecret) return;
   $('roomQr').toBlob((blob) => {
     if (!blob) { showVerifyMessage('No se pudo descargar el QR.', true); return; }
     const url = URL.createObjectURL(blob);
@@ -478,7 +469,6 @@ async function publishRoom() {
     try { localStorage.setItem(lastRoomKey, secret); } catch {}
     history.replaceState(null, '', roomLink()); renderVerification();
     showVerifyMessage('QR listo. Muéstralo para que el equipo entre con su celular.');
-    showRoomQr();
   } catch (error) { $('shareButton').disabled = false; $('shareState').textContent = 'No se pudo crear el acceso.'; showVerifyMessage(error.message, true); }
 }
 
@@ -589,10 +579,7 @@ $('fileInput').addEventListener('change', (event) => loadFile(event.target.files
 $('verifyFileInput').addEventListener('change', async (event) => { await loadFile(event.target.files[0]); if (parsedBook && !roomSecret) await publishRoom(); });
 $('joinForm').addEventListener('submit', (event) => { event.preventDefault(); joinRoom($('joinLink').value); });
 $('shareButton').addEventListener('click', publishRoom);
-$('showQr').addEventListener('click', showRoomQr);
-$('closeQr').addEventListener('click', closeRoomQr);
 $('downloadQr').addEventListener('click', downloadRoomQr);
-$('qrModal').addEventListener('click', (event) => { if (event.target === $('qrModal')) closeRoomQr(); });
 $('copyLink').addEventListener('click', copyRoomLink);
 $('organizeTab').addEventListener('click', () => setMode('organize'));
 $('verifyTab').addEventListener('click', () => setMode('verify'));
@@ -615,7 +602,7 @@ $('openCamera').addEventListener('click', openCamera);
 $('closeCamera').addEventListener('click', closeCamera);
 $('captureFolio').addEventListener('click', captureCamera);
 $('cameraModal').addEventListener('click', (event) => { if (event.target === $('cameraModal')) closeCamera(); });
-document.addEventListener('keydown', (event) => { if (event.key !== 'Escape') return; if (!$('cameraModal').hidden) closeCamera(); else closeRoomQr(); });
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('cameraModal').hidden) closeCamera(); });
 $('photoInput').addEventListener('change', (event) => { const file = event.target.files[0]; if (file) readImage(file); event.target.value = ''; });
 $('changeFile').addEventListener('click', () => $('fileInput').click());
 $('minus').addEventListener('click', () => { $('personCount').value = String(countValue() - 1); renderPeople(); });
