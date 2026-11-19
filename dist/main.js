@@ -582,7 +582,7 @@ $('shareButton').addEventListener('click', publishRoom);
 $('downloadQr').addEventListener('click', downloadRoomQr);
 $('copyLink').addEventListener('click', copyRoomLink);
 $('organizeTab').addEventListener('click', () => setMode('organize'));
-$('verifyTab').addEventListener('click', () => setMode('verify'));
+$('verifyTab').addEventListener('click', () => { location.href = './control.html'; });
 $('manualForm').addEventListener('submit', async (event) => { event.preventDefault(); if (await markFolio($('manualFolio').value)) $('manualFolio').value = ''; });
 $('verifyList').addEventListener('change', async (event) => {
   if (event.target.type !== 'checkbox') return;

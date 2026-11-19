@@ -2,15 +2,23 @@
 
 Aplicación estática para ordenar RFC y folios dentro de una plantilla Excel, repartir los registros entre personas con colores y verificar los documentos físicos por su número de folio. El archivo se procesa en el navegador.
 
-## Verificación de documentos
+## Nuevo control compartido de documentos
 
-En la pestaña **Verificar documentos**, carga el Excel desde una computadora: se crea automáticamente una lista privada y su QR de acceso queda visible justo debajo del nombre del archivo. Cada carga crea una clave nueva, incluso si se vuelve a cargar el mismo archivo. Los colaboradores escanean el QR con la cámara del celular para abrir la lista sin volver a cargar el Excel. El QR permanece visible mientras esa lista esté abierta y se puede descargar como PNG. También se puede copiar el enlace como alternativa. El navegador recuerda la última sala abierta. Enfoca con la cámara el número debajo de «No. de documento». La página marca el folio solo cuando hay una coincidencia única y exacta. Si el escaneo en vivo no está disponible, usa **Abrir cámara para tomar foto**. También permite escribir el folio o marcarlo manualmente. Muestra verificados y pendientes, permite filtrar y descarga un reporte CSV. Las marcas se sincronizan aproximadamente cada cuatro segundos.
+Abre **Verificar documentos** desde la página principal. La encargada crea una cuenta con correo y contraseña, carga el Excel, elige mes y QNA, y escribe el nombre, correo y cantidad de archivos físicos de cada persona. Los registros quedan ordenados por RFC y repartidos en ese orden. Cada persona recibe un QR distinto, ligado al correo de su cuenta. Al abrirlo, debe entrar o crear su cuenta y confirmar su correo. El QR se genera de nuevo para cada lote.
+
+Cada colaborador ve el avance general y su asignación. Para registrar un documento, enfoca con el celular el recuadro completo o toma una foto: el lector extrae procedencia, nivel, número de documento y fecha, y pide confirmar la lectura. La casilla del listado está deshabilitada para colaboradores. La encargada puede marcar o desmarcar manualmente con una observación obligatoria. También puede añadir un documento físico ausente del Excel con folio, datos del recuadro y motivo. Todo movimiento queda en la bitácora, con QNA, responsable y fecha; se puede buscar en QNAs anteriores y descargar un CSV completo.
+
+La información del nuevo control se guarda solo en tablas `v2_*` del esquema aislado `"fup-sep"` del proyecto Supabase **aria-arquitectura**. El Excel original y las imágenes capturadas se procesan en el navegador y no se guardan. El progreso se actualiza cada cinco segundos. La lectura de texto usa Tesseract.js en el dispositivo y necesita Internet para descargar el lector la primera vez.
+
+## Verificación anterior
+
+Las salas anteriores con enlaces `?s=` siguen disponibles para consultar el trabajo previo. El acceso normal a **Verificar documentos** abre el nuevo control con cuentas.
 
 Antes de crear el acceso, el avance solo se guarda en el navegador asociado al Excel. Al crear el acceso, **folio, RFC y marcas** se guardan en el esquema aislado `"fup-sep"` de la base de datos Supabase del proyecto Aria. El Excel original y las fotos no se suben. El QR se dibuja en el navegador sin enviar la clave a un servicio externo. Quien tenga el QR o el enlace puede acceder a esa lista y marcar folios; el QR no identifica a la persona. El QR anterior sigue abriendo su lista anterior y no da acceso a una lista nueva. El reconocimiento usa Tesseract.js en el dispositivo; su código y modelo de idioma se descargan por Internet la primera vez que se usa.
 
 ## Base de datos
 
-El SQL para crear el esquema, tablas y funciones está en `supabase/fup-sep.sql`. En la configuración Data API del proyecto Supabase de Aria hay que agregar `fup-sep` a **Exposed schemas**, conservando los esquemas existentes. Solo se otorga a `anon` ejecución de las cuatro funciones del esquema; las tablas tienen RLS activada y no tienen permisos directos para visitantes.
+El SQL original está en `supabase/fup-sep.sql` y la migración del nuevo control en `supabase/fup-sep-v2.sql`. El esquema `fup-sep` debe permanecer en **Exposed schemas** de Data API. La migración da acceso a las funciones nuevas solo a usuarios autenticados; las tablas nuevas tienen RLS y no conceden acceso directo. En Auth, agrega `https://ordenador-rfc.vercel.app/control.html` a **Redirect URLs** para que la confirmación de correo vuelva al sitio.
 
 ## Estructura
 

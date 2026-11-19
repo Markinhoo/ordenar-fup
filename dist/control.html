@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#315e48">
+  <title>Control de documentos · Ordenar FUP</title>
+  <link rel="stylesheet" href="./control.css">
+</head>
+<body>
+  <div class="control-shell">
+    <header class="control-header">
+      <a class="control-brand" href="./index.html"><span>↧</span><strong>ORDENAR FUP</strong></a>
+      <div class="header-right"><a href="./index.html">Ordenar Excel</a><span id="signedEmail"></span><button id="logout" type="button" hidden>Salir</button></div>
+    </header>
+
+    <main id="authPanel" class="auth-panel">
+      <div class="auth-card">
+        <p class="eyebrow">CONTROL COMPARTIDO</p>
+        <h1>Entra para verificar documentos</h1>
+        <p id="inviteNotice">La encargada carga el Excel y asigna a cada persona su propio QR. Todos ven el avance en tiempo real.</p>
+        <form id="authForm">
+          <label>Correo electrónico<input id="authEmail" type="email" autocomplete="email" required></label>
+          <label>Contraseña<input id="authPassword" type="password" autocomplete="current-password" minlength="6" required></label>
+          <button class="primary" type="submit">Entrar</button>
+        </form>
+        <button id="register" class="text-button" type="button">Crear cuenta con este correo y contraseña</button>
+        <p id="authMessage" class="message" role="status"></p>
+      </div>
+    </main>
+
+    <main id="appPanel" class="app-panel" hidden>
+      <div class="app-top">
+        <div><p class="eyebrow">VERIFICACIÓN FUP</p><h1 id="pageTitle">Control de documentos</h1><p id="batchMeta">Crea un lote o abre el QR que te asignaron.</p></div>
+        <div class="top-actions"><select id="batchSelector" aria-label="Elegir lote" hidden></select><button id="newBatch" type="button" hidden>Nuevo lote</button></div>
+      </div>
+      <nav class="control-tabs" aria-label="Secciones">
+        <button id="setupTab" type="button">Preparar lote</button>
+        <button id="listTab" type="button">Listado y avance</button>
+        <button id="historyTab" type="button" hidden>Bitácora por QNA</button>
+      </nav>
+      <p id="appMessage" class="message" role="status" aria-live="polite"></p>
+
+      <section id="setupSection" class="section setup-section" hidden>
+        <div class="setup-card">
+          <h2>1. Carga el archivo general</h2>
+          <label class="file-picker">Seleccionar Excel .xlsx<input id="batchFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+          <p id="fileSummary">Aún no hay archivo. Se tomarán RFC y folio del Excel.</p>
+          <div class="qna-fields"><label>Mes de trabajo<input id="qnaMonth" type="month" required></label><label>Quincena<select id="qnaHalf"><option value="1">Primera (1–15)</option><option value="2">Segunda (16–fin)</option></select></label></div>
+        </div>
+        <div class="setup-card">
+          <h2>2. Asigna personas y archivos físicos</h2>
+          <p>Escribe nombre, correo de su cuenta y cantidad de documentos físicos. Los RFC se reparten en orden alfabético.</p>
+          <label class="count-label">Personas <input id="workerCount" type="number" min="1" max="50" value="2"></label>
+          <div id="workerRows" class="worker-rows"></div>
+          <p id="allocationNotice" class="allocation-notice"></p>
+          <button id="createBatch" class="primary" type="button" disabled>Crear lote y códigos QR</button>
+        </div>
+      </section>
+
+      <section id="listSection" class="section list-section" hidden>
+        <div class="list-side">
+          <div class="panel progress-panel"><h2>Avance del lote</h2><strong id="totalProgress">0 / 0</strong><div class="progress-track"><div id="totalFill"></div></div><div id="workerProgress"></div></div>
+          <div id="workerQrPanel" class="panel" hidden><h2>QR de cada persona</h2><p>Cada QR está ligado al correo asignado. La persona inicia sesión antes de escanear.</p><div id="workerQrList"></div></div>
+          <div id="scanActions" class="panel" hidden><h2>Escanear documento físico</h2><p>Coloca el recuadro completo: procedencia, nivel, No. de documento y fecha.</p><button id="openScanner" class="primary" type="button">Abrir cámara</button><label class="photo-button">Tomar foto del recuadro<input id="scanPhoto" type="file" accept="image/*" capture="environment"></label></div>
+          <div id="manualPanel" class="panel" hidden><h2>Añadir documento no digital</h2><p>Solo la encargada puede agregarlo. La observación queda en la bitácora.</p><form id="missingForm" class="stack-form"><input id="missingFolio" placeholder="No. de documento" inputmode="numeric" required><input id="missingRfc" placeholder="RFC (si se conoce)"><input id="missingSource" placeholder="Procedencia" required><input id="missingLevel" placeholder="Nivel" required><label>Fecha del documento<input id="missingDate" type="date" required></label><select id="missingWorker"><option value="">Sin asignar</option></select><textarea id="missingNote" placeholder="Observación: por qué no está en el Excel" minlength="5" maxlength="500" required></textarea><button class="primary" type="submit">Añadir y registrar</button></form></div>
+        </div>
+        <div class="panel records-panel"><div class="panel-heading"><div><h2>Listado por RFC</h2><p id="recordCount">0 registros</p></div><button id="downloadCsv" type="button">Descargar CSV</button></div><div class="list-filters"><input id="recordSearch" type="search" placeholder="Buscar RFC, folio o persona"><label><input id="pendingOnly" type="checkbox"> Solo pendientes</label></div><div class="records-scroll"><table><thead><tr><th>✓</th><th>RFC / Folio</th><th>Asignado</th><th>Documento</th><th>Responsable</th></tr></thead><tbody id="recordBody"></tbody></table></div><small>Las casillas solo las cambia la encargada con una observación. El equipo verifica mediante escaneo.</small></div>
+      </section>
+
+      <section id="historySection" class="section history-section" hidden>
+        <div class="panel"><div class="panel-heading"><div><h2>Bitácora de escaneos</h2><p>Consulta QNAs anteriores y quién registró cada folio.</p></div><button id="historyCsv" type="button">Descargar CSV completo</button></div><div class="history-filters"><select id="historyQna"><option value="">Todas las QNAs</option></select><input id="historySearch" type="search" placeholder="Folio, RFC o persona"><button id="searchHistory" type="button">Buscar</button></div><p id="historyCount"></p><div class="history-scroll"><table><thead><tr><th>Registro</th><th>QNA / Excel</th><th>Folio / RFC</th><th>Responsable</th><th>Tipo</th><th>Recuadro / observación</th></tr></thead><tbody id="historyBody"></tbody></table></div><button id="historyMore" type="button" hidden>Cargar movimientos anteriores</button></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="scanModal" class="scan-modal" hidden role="dialog" aria-modal="true" aria-label="Escanear recuadro del documento"><div class="scan-card"><div class="scan-heading"><strong>Escanear recuadro completo</strong><button id="closeScanner" type="button" aria-label="Cerrar">×</button></div><div id="videoWrap" class="video-wrap"><video id="scanVideo" autoplay playsinline muted></video><div class="scan-guide">PROCEDENCIA · NIVEL · No. DE DOCUMENTO · FECHA</div></div><p id="scanMessage" role="status">Alinea todo el recuadro dentro de la guía.</p><button id="captureScanner" class="primary" type="button">Leer recuadro</button><div id="scanResult" hidden><dl><div><dt>Procedencia</dt><dd id="scanSource"></dd></div><div><dt>Nivel</dt><dd id="scanLevel"></dd></div><div><dt>No. de documento</dt><dd id="scanFolio"></dd></div><div><dt>Fecha</dt><dd id="scanDate"></dd></div></dl><button id="saveScan" class="primary" type="button">Confirmar y guardar escaneo</button><button id="retryScan" type="button">Volver a leer</button></div></div></div>
+
+  <script src="./fflate.min.js"></script>
+  <script src="./qrcode-generator.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+  <script src="./shared-config.js"></script>
+  <script type="module" src="./control.js"></script>
+</body>
+</html>
