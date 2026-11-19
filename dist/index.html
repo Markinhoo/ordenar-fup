@@ -62,10 +62,10 @@
     <section id="verifyView" class="verify-view" hidden aria-label="Verificar documentos físicos">
       <div class="verify-tools card">
         <div class="card-heading"><div><div class="section-number">CONTROL DE DOCUMENTOS</div><h2>Verifica cada folio</h2></div><span class="card-icon">✓</span></div>
-        <p class="verify-help">Carga el Excel en la computadora y comparte el enlace de equipo. En cada celular, abre ese enlace una vez para activar la lista y la cámara.</p>
+        <p class="verify-help">Carga el Excel en la computadora y muestra el QR al equipo. Cada archivo genera un QR nuevo para abrir su lista en el celular.</p>
         <form id="joinForm" class="join-form"><label for="joinLink">¿Ya tienes el enlace del equipo?</label><div><input id="joinLink" type="text" inputmode="url" autocomplete="off" placeholder="Pega aquí el enlace privado"><button type="submit">Entrar</button></div></form>
-        <label class="verify-file" for="verifyFileInput"><input id="verifyFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><span>↑</span><strong id="verifyFileName">Cargar Excel y crear enlace</strong></label>
-        <div class="share-controls"><button id="shareButton" type="button" disabled>Crear enlace de equipo</button><button id="copyLink" type="button" hidden>Copiar enlace</button><small id="shareState">Aún no hay una lista compartida.</small></div>
+        <label class="verify-file" for="verifyFileInput"><input id="verifyFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><span>↑</span><strong id="verifyFileName">Cargar Excel y crear QR</strong></label>
+        <div class="share-controls"><button id="shareButton" type="button" disabled>Crear acceso de equipo</button><button id="showQr" type="button" hidden>Mostrar QR de acceso</button><button id="copyLink" type="button" hidden>Copiar enlace</button><small id="shareState">Aún no hay una lista compartida.</small></div>
         <div class="verify-progress"><strong id="verifyCount">0 / 0</strong><span>documentos verificados</span><div class="progress-track"><div id="progressFill"></div></div><small id="remainingCount">Carga un archivo para comenzar</small></div>
         <button id="openCamera" class="primary-button" type="button" disabled>▣ Escanear con cámara</button>
         <label class="photo-button" for="photoInput">Abrir cámara para tomar foto</label><input id="photoInput" class="visually-hidden" type="file" accept="image/*" capture="environment" disabled>
@@ -82,8 +82,10 @@
     <p class="status" id="status" role="status" aria-live="polite"></p>
     <footer>ORDENAR FUP <span>•</span> El Excel original permanece en tu dispositivo.</footer>
   </main>
+  <div class="qr-modal" id="qrModal" hidden role="dialog" aria-modal="true" aria-labelledby="qrTitle"><div class="qr-panel"><div class="qr-header"><h2 id="qrTitle">QR de acceso del equipo</h2><button id="closeQr" type="button" aria-label="Cerrar QR">×</button></div><p>Abre la cámara del celular y apunta a este QR. Se abrirá la lista compartida y podrás escanear los folios.</p><canvas id="roomQr" role="img" aria-label="Código QR para abrir la lista privada"></canvas><strong id="qrFileName"></strong><button id="downloadQr" class="primary-button" type="button">Descargar QR</button><small>Quien tenga este QR podrá ver los RFC y marcar documentos de esta lista.</small></div></div>
   <div class="camera-modal" id="cameraModal" hidden role="dialog" aria-modal="true" aria-label="Escanear folio"><div class="camera-panel"><div class="camera-header"><strong>Escanear No. de documento</strong><button id="closeCamera" type="button" aria-label="Cerrar cámara">×</button></div><div class="camera-preview"><video id="cameraVideo" autoplay playsinline muted></video><div class="scan-frame"><span>Coloca aquí solo el número de folio</span></div></div><p id="cameraMessage" role="status" aria-live="polite">Acerca la cámara hasta que el número se vea nítido.</p><button id="captureFolio" class="primary-button" type="button">Leer folio</button></div></div>
   <script src="./fflate.min.js"></script>
+  <script src="./qrcode-generator.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
   <script src="./shared-config.js"></script>
   <script type="module" src="./main.js"></script>

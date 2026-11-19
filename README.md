@@ -4,9 +4,9 @@ Aplicación estática para ordenar RFC y folios dentro de una plantilla Excel, r
 
 ## Verificación de documentos
 
-En la pestaña **Verificar documentos**, carga el Excel desde una computadora: se crea automáticamente un enlace privado de equipo. Quien abre ese enlace en un celular recibe el listado sin volver a cargar el archivo. Si abre solo la página principal de Vercel, puede pegar el enlace en **¿Ya tienes el enlace del equipo?**. El navegador recuerda la última sala abierta. Enfoca con la cámara el número debajo de «No. de documento». La página marca el folio solo cuando hay una coincidencia única y exacta. Si el escaneo en vivo no está disponible, usa **Abrir cámara para tomar foto**. También permite escribir el folio o marcarlo manualmente. Muestra verificados y pendientes, permite filtrar y descarga un reporte CSV. Las marcas se sincronizan aproximadamente cada cuatro segundos.
+En la pestaña **Verificar documentos**, carga el Excel desde una computadora: se crea automáticamente una lista privada y aparece su QR de acceso. Cada carga crea una clave nueva, incluso si se vuelve a cargar el mismo archivo. Los colaboradores escanean el QR con la cámara del celular para abrir la lista sin volver a cargar el Excel. El QR se puede mostrar de nuevo o descargar como PNG. También se puede copiar el enlace como alternativa. El navegador recuerda la última sala abierta. Enfoca con la cámara el número debajo de «No. de documento». La página marca el folio solo cuando hay una coincidencia única y exacta. Si el escaneo en vivo no está disponible, usa **Abrir cámara para tomar foto**. También permite escribir el folio o marcarlo manualmente. Muestra verificados y pendientes, permite filtrar y descarga un reporte CSV. Las marcas se sincronizan aproximadamente cada cuatro segundos.
 
-Antes de crear el enlace, el avance solo se guarda en el navegador asociado al Excel. Al crear el enlace, **folio, RFC y marcas** se guardan en el esquema aislado `"fup-sep"` de la base de datos Supabase del proyecto Aria. El Excel original y las fotos no se suben. El enlace contiene una clave aleatoria que da acceso a la lista; compártelo solo con el equipo. El reconocimiento usa Tesseract.js en el dispositivo; su código y modelo de idioma se descargan por Internet la primera vez que se usa.
+Antes de crear el acceso, el avance solo se guarda en el navegador asociado al Excel. Al crear el acceso, **folio, RFC y marcas** se guardan en el esquema aislado `"fup-sep"` de la base de datos Supabase del proyecto Aria. El Excel original y las fotos no se suben. El QR se dibuja en el navegador sin enviar la clave a un servicio externo. Quien tenga el QR o el enlace puede acceder a esa lista y marcar folios; el QR no identifica a la persona. El QR anterior sigue abriendo su lista anterior y no da acceso a una lista nueva. El reconocimiento usa Tesseract.js en el dispositivo; su código y modelo de idioma se descargan por Internet la primera vez que se usa.
 
 ## Base de datos
 
@@ -16,5 +16,7 @@ El SQL para crear el esquema, tablas y funciones está en `supabase/fup-sep.sql`
 
 - `dist/`: sitio listo para publicar, sin compilación.
 - `vercel.json`: indica a Vercel que publique `dist/`.
+
+El generador QR incluido en `dist/qrcode-generator.js` proviene de [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) y conserva su licencia MIT en `dist/qrcode-generator-LICENSE.txt`.
 
 El proyecto `ordenar-fup` en Vercel está conectado a la rama `main` de `Markinhoo/ordenar-fup`. Los cambios enviados a esa rama generan despliegues automáticos.

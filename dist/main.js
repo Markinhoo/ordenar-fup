@@ -11,6 +11,7 @@ let verificationKey = '';
 let roomSecret = '';
 let sharedFileName = '';
 let syncBusy = false;
+let qrPreviousFocus = null;
 const lastRoomKey = 'ordenar-fup:last-team-room';
 let cameraStream = null;
 let ocrWorker = null;
@@ -332,10 +333,11 @@ function renderVerification() {
   $('progressFill').style.width = total ? `${verified.size / total * 100}%` : '0%';
   $('listTitle').textContent = $('pendingOnly').checked ? 'Folios pendientes' : 'Todos los folios';
   $('shareButton').hidden = !!roomSecret;
+  $('showQr').hidden = !roomSecret;
   $('copyLink').hidden = !roomSecret;
   $('joinForm').hidden = !!total;
   $('shareButton').disabled = !parsedBook || !!roomSecret;
-  $('shareState').textContent = roomSecret ? 'Lista compartida · las marcas se sincronizan entre dispositivos.' : total ? 'Lista solo en este dispositivo. Crea el enlace para compartirla.' : 'Pega el enlace privado de equipo para ver el listado.';
+  $('shareState').textContent = roomSecret ? 'Escanea el QR para entrar a esta lista. Las marcas se sincronizan entre dispositivos.' : total ? 'Lista solo en este dispositivo. Crea el acceso para compartirla.' : 'Escanea el QR del equipo o pega su enlace para ver el listado.';
   $('openCamera').textContent = total ? '▣ Escanear con cámara' : 'Abre la lista para usar cámara';
   document.querySelector('.photo-button').hidden = !total;
   for (const id of ['openCamera', 'photoInput', 'manualFolio', 'exportReport', 'folioSearch', 'pendingOnly', 'clearProgress']) $(id).disabled = !total;
@@ -379,7 +381,7 @@ function setMode(mode) {
   $('organizeTab').classList.toggle('selected', !verifyMode); $('verifyTab').classList.toggle('selected', verifyMode);
   $('organizeTab').setAttribute('aria-pressed', String(!verifyMode)); $('verifyTab').setAttribute('aria-pressed', String(verifyMode));
   $('status').hidden = verifyMode;
-  if (!verifyMode) closeCamera();
+  if (!verifyMode) { closeCamera(); closeRoomQr(); }
 }
 
 async function sharedRpc(name, params) {
@@ -397,6 +399,53 @@ async function sharedRpc(name, params) {
 
 function roomLink() {
   const url = new URL(location.href); url.searchParams.set('s', roomSecret); return url.href;
+}
+
+function showRoomQr() {
+  if (!roomSecret) return;
+  try {
+    if (typeof qrcode !== 'function') throw new Error('No se pudo cargar el generador de QR.');
+    const code = qrcode(0, 'M');
+    code.addData(roomLink());
+    code.make();
+    const margin = 4;
+    const scale = 6;
+    const modules = code.getModuleCount();
+    const canvas = $('roomQr');
+    canvas.width = canvas.height = (modules + margin * 2) * scale;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#000000';
+    for (let row = 0; row < modules; row++) {
+      for (let col = 0; col < modules; col++) {
+        if (code.isDark(row, col)) context.fillRect((col + margin) * scale, (row + margin) * scale, scale, scale);
+      }
+    }
+    $('qrFileName').textContent = sharedFileName;
+    qrPreviousFocus = document.activeElement;
+    $('qrModal').hidden = false;
+    $('closeQr').focus();
+  } catch (error) { showVerifyMessage(error.message, true); }
+}
+
+function closeRoomQr() {
+  if ($('qrModal').hidden) return;
+  $('qrModal').hidden = true;
+  qrPreviousFocus?.focus();
+}
+
+function downloadRoomQr() {
+  if ($('qrModal').hidden) return;
+  $('roomQr').toBlob((blob) => {
+    if (!blob) { showVerifyMessage('No se pudo descargar el QR.', true); return; }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${sharedFileName.replace(/\.xlsx$/i, '')}_QR_acceso.png`;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }, 'image/png');
 }
 
 function readRoomSecret(raw) {
@@ -420,7 +469,7 @@ async function joinRoom(raw) {
 
 async function publishRoom() {
   if (!parsedBook || roomSecret) return;
-  $('shareButton').disabled = true; $('shareState').textContent = 'Creando enlace…';
+  $('shareButton').disabled = true; $('shareState').textContent = 'Creando QR de acceso…';
   try {
     const records = verification.map(({ id, folio, rfc }) => ({ folio, rfc, checked: verified.has(id) }));
     const secret = await sharedRpc('create_room', { p_file_name: selectedFile.name, p_records: records });
@@ -428,9 +477,9 @@ async function publishRoom() {
     roomSecret = secret; verificationKey = '';
     try { localStorage.setItem(lastRoomKey, secret); } catch {}
     history.replaceState(null, '', roomLink()); renderVerification();
-    showVerifyMessage('Enlace listo. Compártelo con quienes van a escanear.');
-    await copyRoomLink();
-  } catch (error) { $('shareButton').disabled = false; $('shareState').textContent = 'No se pudo crear el enlace.'; showVerifyMessage(error.message, true); }
+    showVerifyMessage('QR listo. Muéstralo para que el equipo entre con su celular.');
+    showRoomQr();
+  } catch (error) { $('shareButton').disabled = false; $('shareState').textContent = 'No se pudo crear el acceso.'; showVerifyMessage(error.message, true); }
 }
 
 async function copyRoomLink() {
@@ -540,6 +589,10 @@ $('fileInput').addEventListener('change', (event) => loadFile(event.target.files
 $('verifyFileInput').addEventListener('change', async (event) => { await loadFile(event.target.files[0]); if (parsedBook && !roomSecret) await publishRoom(); });
 $('joinForm').addEventListener('submit', (event) => { event.preventDefault(); joinRoom($('joinLink').value); });
 $('shareButton').addEventListener('click', publishRoom);
+$('showQr').addEventListener('click', showRoomQr);
+$('closeQr').addEventListener('click', closeRoomQr);
+$('downloadQr').addEventListener('click', downloadRoomQr);
+$('qrModal').addEventListener('click', (event) => { if (event.target === $('qrModal')) closeRoomQr(); });
 $('copyLink').addEventListener('click', copyRoomLink);
 $('organizeTab').addEventListener('click', () => setMode('organize'));
 $('verifyTab').addEventListener('click', () => setMode('verify'));
@@ -562,7 +615,7 @@ $('openCamera').addEventListener('click', openCamera);
 $('closeCamera').addEventListener('click', closeCamera);
 $('captureFolio').addEventListener('click', captureCamera);
 $('cameraModal').addEventListener('click', (event) => { if (event.target === $('cameraModal')) closeCamera(); });
-document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('cameraModal').hidden) closeCamera(); });
+document.addEventListener('keydown', (event) => { if (event.key !== 'Escape') return; if (!$('cameraModal').hidden) closeCamera(); else closeRoomQr(); });
 $('photoInput').addEventListener('change', (event) => { const file = event.target.files[0]; if (file) readImage(file); event.target.value = ''; });
 $('changeFile').addEventListener('click', () => $('fileInput').click());
 $('minus').addEventListener('click', () => { $('personCount').value = String(countValue() - 1); renderPeople(); });
