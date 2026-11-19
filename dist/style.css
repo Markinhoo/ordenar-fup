@@ -164,3 +164,4 @@ footer{flex:none;margin-top:0;padding:7px 0 8px}
 @media(max-width:760px){.inline-qr{gap:9px;padding:5px;margin-top:4px}.inline-qr canvas{width:104px;height:104px}.inline-qr strong{font-size:10px}.inline-qr small{font-size:9px}.inline-qr button{padding:6px 8px;font-size:9px}}
 body:has(#verifyView:not([hidden])) .hero,body:has(#verifyView:not([hidden])) footer{display:none}
 @media(max-width:760px){body:has(#verifyView:not([hidden])) .verify-view{grid-template-rows:minmax(0,1.45fr) minmax(0,.8fr)}.inline-qr canvas{width:90px;height:90px}}
+body:has(#inlineQr:not([hidden])) .verify-help,body:has(#inlineQr:not([hidden])) #shareState{display:none}
