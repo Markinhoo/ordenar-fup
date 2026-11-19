@@ -745,6 +745,7 @@ $('newBatch').addEventListener('click', () => showSection('setup'));
 $('batchSelector').addEventListener('change', (event) => openBatch(event.target.value).catch((error) => message(error.message, true)));
 $('batchFile').addEventListener('change', (event) => loadFile(event.target.files[0]));
 $('workerCount').addEventListener('change', renderWorkerRows);
+$('workerCount').addEventListener('input', renderWorkerRows);
 $('workerRows').addEventListener('change', updateAllocation);
 $('qnaMonth').addEventListener('change', updateQnaCode);
 $('qnaHalf').addEventListener('change', updateQnaCode);
