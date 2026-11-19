@@ -25,6 +25,10 @@ El SQL original está en `supabase/fup-sep.sql` y la migración del nuevo contro
 - `dist/`: sitio listo para publicar, sin compilación.
 - `vercel.json`: indica a Vercel que publique `dist/`.
 
+## Ejecutar en la computadora
+
+Con Node.js instalado, abre una terminal en `ordenar-fup` y ejecuta `npm run dev`. Después abre `http://127.0.0.1:5173`. No hace falta `npm install`: el servidor local usa solo Node.js y publica la carpeta `dist/`. Para detenerlo, presiona `Ctrl+C`.
+
 El generador QR incluido en `dist/qrcode-generator.js` proviene de [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) y conserva su licencia MIT en `dist/qrcode-generator-LICENSE.txt`.
 
 El proyecto `ordenar-fup` en Vercel está conectado a la rama `main` de `Markinhoo/ordenar-fup`. Los cambios enviados a esa rama generan despliegues automáticos.
