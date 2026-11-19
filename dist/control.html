@@ -55,15 +55,15 @@
           <h2>1. Carga el archivo general</h2>
           <label class="file-picker">Seleccionar Excel .xlsx<input id="batchFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
           <p id="fileSummary">Aún no hay archivo. Se tomarán RFC y folio del Excel.</p>
-          <div class="qna-fields"><label>Mes de trabajo<input id="qnaMonth" type="month" required></label><label>Quincena<select id="qnaHalf"><option value="1">Primera (1–15)</option><option value="2">Segunda (16–fin)</option></select></label></div>
+          <div class="qna-fields"><label>Mes de trabajo<input id="qnaMonth" type="month" required></label><label>Quincena<select id="qnaHalf"><option value="1">Primera (1–15)</option><option value="2">Segunda (16–fin)</option></select></label></div><p>QNA del lote: <strong id="qnaCode">—</strong></p>
         </div>
         <div class="setup-card">
-          <h2>2. Asigna personas y archivos físicos</h2>
-          <p>Escribe nombre, correo de su cuenta y cantidad de documentos físicos. Los RFC se reparten en orden alfabético.</p>
+          <h2>2. Reparto automático por persona</h2>
+          <p>Elige cuántas personas trabajarán y selecciona sus nombres. El sistema reparte todos los registros del Excel en orden alfabético por RFC.</p>
           <label class="count-label">Personas <input id="workerCount" type="number" min="1" max="50" value="2"></label>
           <div id="workerRows" class="worker-rows"></div>
           <p id="allocationNotice" class="allocation-notice"></p>
-          <button id="createBatch" class="primary" type="button" disabled>Crear lote y códigos QR</button>
+          <button id="createBatch" class="primary" type="button" disabled>Crear lote y códigos QR</button><p>Si falta alguien, crea su cuenta en <strong>Usuarios</strong> y después selecciónala aquí.</p>
         </div>
       </section>
 

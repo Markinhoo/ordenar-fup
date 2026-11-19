@@ -2,7 +2,7 @@ const $ = (id) => document.getElementById(id);
 const config = window.FUP_SUPABASE;
 const sessionKey = 'ordenar-fup:auth-session';
 const lastBatchKey = 'ordenar-fup:last-v2-batch';
-const state = { session: null, account: null, isAdmin: false, batch: null, batches: [], fileRecords: [], fileName: '', section: 'waiting', history: [], historyMore: false, scan: null, stream: null, ocr: null, reading: false, busy: false };
+const state = { session: null, account: null, isAdmin: false, availableUsers: [], batch: null, batches: [], fileRecords: [], fileName: '', section: 'waiting', history: [], historyMore: false, scan: null, stream: null, ocr: null, reading: false, busy: false };
 
 function message(text, error = false, target = 'appMessage') {
   $(target).textContent = text;
@@ -86,6 +86,7 @@ async function showApp() {
     $('accountButton').hidden = false;
     $('usersButton').hidden = !state.isAdmin;
     $('setupTab').hidden = !state.isAdmin;
+    if (state.isAdmin) await loadAssignableUsers();
     await bootstrap();
     if (!state.account.recoverySet) { openAccount(false); message('Configura tu pregunta de respaldo para recuperar tu acceso.'); }
   } catch (error) { state.isAdmin = false; message(error.message, true); showSection('waiting'); }
@@ -115,7 +116,7 @@ async function refreshBatches() {
   const selector = $('batchSelector'); selector.replaceChildren();
   for (const batch of state.batches) {
     const option = document.createElement('option'); option.value = batch.id;
-    option.textContent = `${batch.qna} · ${batch.fileName}`; selector.appendChild(option);
+    option.textContent = `${qnaLabel(batch.qna)} · ${batch.fileName}`; selector.appendChild(option);
   }
   selector.hidden = !state.isAdmin || !state.batches.length;
   $('historyTab').hidden = !state.isAdmin || !state.batches.length;
@@ -124,9 +125,21 @@ async function refreshBatches() {
   $('historyQna').replaceChildren(new Option('Todas las QNAs', ''), ...qnas.map((qna) => new Option(qnaLabel(qna), qna)));
 }
 
+function qnaCode(monthValue, halfValue) {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(monthValue || '');
+  const half = Number(halfValue);
+  return match && (half === 1 || half === 2)
+    ? `${match[1]}${String((Number(match[2]) - 1) * 2 + half).padStart(2, '0')}` : '';
+}
+
 function qnaLabel(qna) {
-  const [year, month, half] = qna.split('-');
-  return `${half === '1' ? '1ª' : '2ª'} QNA ${month}/${year}`;
+  if (/^\d{4}(0[1-9]|1\d|2[0-4])$/.test(qna || '')) return qna;
+  const match = /^(\d{4})-(0[1-9]|1[0-2])-([12])$/.exec(qna || '');
+  return match ? qnaCode(`${match[1]}-${match[2]}`, match[3]) : qna || '—';
+}
+
+function updateQnaCode() {
+  $('qnaCode').textContent = qnaCode($('qnaMonth').value, $('qnaHalf').value) || '—';
 }
 
 async function openBatch(id) {
@@ -166,31 +179,41 @@ function showSection(name) {
   }
 }
 
+async function loadAssignableUsers() {
+  const data = await accounts('list-users');
+  state.availableUsers = data.users;
+  renderWorkerRows();
+}
+
 function renderWorkerRows() {
   const count = Math.max(1, Math.min(50, Number($('workerCount').value) || 1));
   $('workerCount').value = count;
-  const old = [...$('workerRows').children].map((row) => ({ name: row.querySelector('.worker-name').value,
-    email: row.querySelector('.worker-email').value, target: row.querySelector('.worker-target').value }));
+  const old = [...$('workerRows').children].map((row) => row.querySelector('.worker-name').value);
   $('workerRows').replaceChildren();
   for (let i = 0; i < count; i++) {
     const row = document.createElement('div'); row.className = 'worker-row';
-    const name = document.createElement('input'); name.className = 'worker-name'; name.placeholder = `Persona ${i + 1}`; name.maxLength = 80; name.value = old[i]?.name || '';
-    const email = document.createElement('input'); email.className = 'worker-email'; email.type = 'email'; email.placeholder = 'Correo de su cuenta'; email.value = old[i]?.email || '';
-    const target = document.createElement('input'); target.className = 'worker-target'; target.type = 'number'; target.min = 0; target.max = 2000;
-    target.title = 'Archivos físicos asignados'; target.placeholder = 'Cantidad'; target.value = old[i]?.target ?? (state.fileRecords.length ? String(Math.floor(state.fileRecords.length / count) + (i < state.fileRecords.length % count ? 1 : 0)) : '0');
-    row.append(name, email, target); $('workerRows').appendChild(row);
+    const name = document.createElement('select'); name.className = 'worker-name'; name.setAttribute('aria-label', `Persona ${i + 1}`);
+    name.appendChild(new Option(`Persona ${i + 1}: selecciona usuario`, ''));
+    for (const user of state.availableUsers) name.appendChild(new Option(user.name, user.id));
+    name.value = old[i] || '';
+    const target = document.createElement('output'); target.className = 'worker-target'; target.setAttribute('aria-label', `Registros para persona ${i + 1}`);
+    row.append(name, target); $('workerRows').appendChild(row);
   }
   updateAllocation();
 }
 
 function updateAllocation() {
-  const targets = [...document.querySelectorAll('.worker-target')].map((input) => Math.max(0, Number(input.value) || 0));
-  const sum = targets.reduce((a, b) => a + b, 0);
   const digital = state.fileRecords.length;
+  const rows = [...$('workerRows').children];
+  rows.forEach((row, index) => {
+    row.querySelector('.worker-target').textContent = String(digital ? Math.floor(digital / rows.length) + (index < digital % rows.length ? 1 : 0) : 0);
+  });
+  const selected = rows.map((row) => row.querySelector('.worker-name').value);
+  const complete = selected.every(Boolean) && new Set(selected).size === rows.length;
   $('allocationNotice').textContent = digital
-    ? `${sum} archivos físicos asignados · ${digital} registros digitales. ${sum < digital ? `${digital - sum} digitales quedarán sin persona asignada.` : sum > digital ? `${sum - digital} físicos adicionales podrán registrarse con observación.` : 'El reparto cubre todos los digitales.'}`
-    : 'Carga el Excel para comparar cantidades.';
-  $('createBatch').disabled = !digital || state.busy;
+    ? `${digital} registros digitales repartidos entre ${rows.length} ${rows.length === 1 ? 'persona' : 'personas'}. ${complete ? 'Todos tienen responsable.' : 'Selecciona una cuenta distinta para cada persona.'}`
+    : 'Carga el Excel para calcular el reparto.';
+  $('createBatch').disabled = !digital || !complete || state.busy;
 }
 
 function parseExcel(bytes) {
@@ -240,28 +263,29 @@ async function loadFile(file) {
     state.fileRecords = parseExcel(new Uint8Array(await file.arrayBuffer()));
     state.fileName = file.name;
     $('fileSummary').textContent = `${file.name} · ${state.fileRecords.length} registros digitales ordenados por RFC`;
-    renderWorkerRows(); message('Archivo leído. Indica nombres, correos y cantidades.');
+    updateAllocation(); message('Archivo leído. El reparto se calculó automáticamente.');
   } catch (error) { state.fileRecords = []; state.fileName = ''; updateAllocation(); message(error.message, true); }
 }
 
 async function createBatch() {
   if (!state.isAdmin || !state.fileRecords.length || state.busy) return;
-  const workers = [...$('workerRows').children].map((row) => ({
-    name: row.querySelector('.worker-name').value.trim(), email: row.querySelector('.worker-email').value.trim().toLowerCase(),
-    target: Number(row.querySelector('.worker-target').value),
-  }));
-  if (workers.some((worker) => worker.name.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(worker.email) || !Number.isInteger(worker.target) || worker.target < 0 || worker.target > 2000)) {
-    message('Completa nombre, correo y cantidad válida para cada persona.', true); return;
+  const rows = [...$('workerRows').children];
+  const workers = rows.map((row, index) => {
+    const account = state.availableUsers.find((user) => user.id === row.querySelector('.worker-name').value);
+    return account && { name: account.name, email: account.email,
+      target: Math.floor(state.fileRecords.length / rows.length) + (index < state.fileRecords.length % rows.length ? 1 : 0) };
+  });
+  if (workers.some((worker) => !worker) || new Set(workers.map((worker) => worker.email)).size !== workers.length) {
+    message('Selecciona un usuario distinto para cada persona.', true); return;
   }
-  if (new Set(workers.map((worker) => worker.email)).size !== workers.length) { message('Cada persona debe tener un correo diferente.', true); return; }
-  const qna = `${$('qnaMonth').value}-${$('qnaHalf').value}`;
-  if (!/^\d{4}-(0[1-9]|1[0-2])-[12]$/.test(qna)) { message('Elige mes y quincena.', true); return; }
+  const qna = qnaCode($('qnaMonth').value, $('qnaHalf').value);
+  if (!qna) { message('Elige mes y quincena.', true); return; }
   state.busy = true; updateAllocation(); message('Creando lote y asignaciones…');
   try {
     const result = await rpc('v2_create_batch', { p_file_name: state.fileName, p_qna: qna,
       p_records: state.fileRecords, p_workers: workers });
     await refreshBatches(); await openBatch(result.batchId);
-    message('Lote creado. Entrega a cada persona su QR y su correo asignado.');
+    message('Lote creado. Entrega a cada persona su QR.');
   } catch (error) { message(error.message, true); }
   finally { state.busy = false; updateAllocation(); }
 }
@@ -300,7 +324,7 @@ function renderWorkerQrs() {
     const email = document.createElement('small'); email.textContent = worker.email;
     const target = document.createElement('small'); target.textContent = `${worker.target} archivos físicos asignados`;
     const download = document.createElement('button'); download.type = 'button'; download.textContent = 'Descargar QR';
-    download.addEventListener('click', () => downloadCanvas(canvas, `${worker.name.replace(/[^\w\- ]/g, '').trim() || 'persona'}_${state.batch.qna}_QR.png`));
+    download.addEventListener('click', () => downloadCanvas(canvas, `${worker.name.replace(/[^\w\- ]/g, '').trim() || 'persona'}_${qnaLabel(state.batch.qna)}_QR.png`));
     details.append(name, email, target, download); card.append(canvas, details); container.appendChild(card);
   }
   container.dataset.batchId = state.batch.id;
@@ -374,9 +398,9 @@ function downloadRecords() {
   const batch = state.batch; if (!batch) return;
   const people = new Map(batch.workers.map((worker) => [worker.id, worker.name]));
   exportCsv([['QNA', 'RFC', 'Folio', 'Persona asignada', 'Estado', 'Responsable', 'Procedencia', 'Nivel', 'Fecha documento', 'Origen', 'Observación'],
-    ...batch.records.map((record) => [batch.qna, record.rfc, record.folio, people.get(record.assignedWorkerId) || '',
+    ...batch.records.map((record) => [qnaLabel(batch.qna), record.rfc, record.folio, people.get(record.assignedWorkerId) || '',
       record.checkedAt ? 'Verificado' : 'Pendiente', record.checkedBy, record.procedencia, record.nivel, record.documentDate,
-      record.source, record.observation])], `${batch.qna}_listado_FUP.csv`);
+      record.source, record.observation])], `${qnaLabel(batch.qna)}_listado_FUP.csv`);
 }
 
 async function refreshBatch() {
@@ -429,7 +453,7 @@ async function downloadHistory() {
       if (page.length < 200) break;
     }
   exportCsv([['Fecha registro', 'QNA', 'Excel', 'Folio', 'RFC', 'Responsable', 'Tipo', 'Procedencia', 'Nivel', 'Fecha documento', 'Observación'],
-    ...rows.map((event) => [event.at, event.qna, event.fileName, event.folio, event.rfc, event.actor,
+    ...rows.map((event) => [event.at, qnaLabel(event.qna), event.fileName, event.folio, event.rfc, event.actor,
       event.action, event.procedencia, event.nivel, event.documentDate, event.observation])], 'bitacora_FUP.csv');
   } catch (error) { message(error.message, true); }
   finally { button.disabled = false; }
@@ -614,6 +638,8 @@ function closeAccount() { $('accountModal').hidden = true; $('createdCredential'
 async function loadUsers() {
   try {
     const data = await accounts('list-users');
+    state.availableUsers = data.users;
+    renderWorkerRows();
     $('usersList').replaceChildren();
     for (const user of data.users) {
       const row = document.createElement('div');
@@ -685,7 +711,7 @@ async function resetUser(user) {
 function logout() {
   if (state.session) authRequest('logout', {}, state.session.access_token).catch(() => {});
   localStorage.removeItem(sessionKey); state.session = null; state.account = null;
-  state.batch = null; state.isAdmin = false; closeAccount();
+  state.batch = null; state.isAdmin = false; state.availableUsers = []; closeAccount();
   showAuth();
 }
 
@@ -693,6 +719,7 @@ function init() {
   if (!config?.url || !config?.key) { message('La conexión de Supabase no está configurada.', true, 'authMessage'); return; }
   const now = new Date(); $('qnaMonth').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   $('qnaHalf').value = now.getDate() <= 15 ? '1' : '2';
+  updateQnaCode();
   renderWorkerRows();
   try { state.session = JSON.parse(localStorage.getItem(sessionKey) || 'null'); } catch { state.session = null; }
   if (state.session) showApp(); else showAuth();
@@ -718,7 +745,9 @@ $('newBatch').addEventListener('click', () => showSection('setup'));
 $('batchSelector').addEventListener('change', (event) => openBatch(event.target.value).catch((error) => message(error.message, true)));
 $('batchFile').addEventListener('change', (event) => loadFile(event.target.files[0]));
 $('workerCount').addEventListener('change', renderWorkerRows);
-$('workerRows').addEventListener('input', updateAllocation);
+$('workerRows').addEventListener('change', updateAllocation);
+$('qnaMonth').addEventListener('change', updateQnaCode);
+$('qnaHalf').addEventListener('change', updateQnaCode);
 $('createBatch').addEventListener('click', createBatch);
 $('recordSearch').addEventListener('input', renderRecords);
 $('pendingOnly').addEventListener('change', renderRecords);

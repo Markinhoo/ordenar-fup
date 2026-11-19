@@ -4,7 +4,7 @@ Aplicación estática para ordenar RFC y folios dentro de una plantilla Excel, r
 
 ## Nuevo control compartido de documentos
 
-La portada abre el login antes de mostrar el sistema. La cuenta administradora `nomina@fup.com` puede cargar el Excel, ordenar y descargar el archivo, elegir mes y QNA, y escribir el nombre, correo y cantidad de archivos físicos de cada persona. En **Usuarios** crea las cuentas del equipo; el sistema genera una contraseña inicial y confirma la cuenta sin enviar correo. El resto del equipo solo ve la verificación después de iniciar sesión y abrir su QR. Los registros quedan ordenados por RFC y repartidos en ese orden. Cada persona recibe un QR distinto, ligado al correo de su cuenta. El QR se genera de nuevo para cada lote.
+La portada abre el login antes de mostrar el sistema. La cuenta administradora `nomina@fup.com` puede cargar el Excel, ordenar y descargar el archivo, elegir mes y quincena, y seleccionar las personas por nombre entre las cuentas creadas en **Usuarios**. El reparto de registros se calcula automáticamente, con una diferencia máxima de un registro entre personas. La QNA usa `AAAANN`: enero primera `202601`, enero segunda `202602` y diciembre segunda `202624`. En **Usuarios** crea las cuentas del equipo; el sistema genera una contraseña inicial y confirma la cuenta sin enviar correo. El resto del equipo solo ve la verificación después de iniciar sesión y abrir su QR. Los registros quedan ordenados por RFC y repartidos en ese orden. Cada persona recibe un QR distinto, ligado internamente a su cuenta. El QR se genera de nuevo para cada lote.
 
 Cada usuario puede cambiar su contraseña y configurar una pregunta de respaldo privada en **Mi cuenta**. Si olvida la contraseña, la restablece con su respuesta. Solo se guarda un hash de esa respuesta; tras cinco intentos fallidos, la recuperación se bloquea durante 30 minutos. La cuenta administradora inicial usa un enlace de activación de un solo uso para definir contraseña y pregunta de respaldo, sin confirmar por correo.
 
@@ -20,7 +20,7 @@ Antes de crear el acceso, el avance solo se guarda en el navegador asociado al E
 
 ## Base de datos
 
-La activación inicial usa `supabase/fup-sep-v5.sql`. La consulta `select "fup-sep".v4_issue_admin_activation();` genera un token aleatorio que vence en 24 horas. El token se entrega al administrador en el fragmento `#token=` de `activar.html` y no se guarda en GitHub.
+La activación inicial usa `supabase/fup-sep-v5.sql`. La consulta `select "fup-sep".v4_issue_admin_activation();` genera un token aleatorio que vence en 24 horas. El token se entrega al administrador en el fragmento `#token=` de `activar.html` y no se guarda en GitHub. `supabase/fup-sep-v6.sql` convierte las QNA anteriores al formato `AAAANN` y hace el reparto en el servidor a partir de la cantidad de registros y personas.
 
 El SQL original está en `supabase/fup-sep.sql`, el control compartido en `supabase/fup-sep-v2.sql`, la restricción de administrador en `supabase/fup-sep-v3.sql` y el directorio de cuentas y recuperación en `supabase/fup-sep-v4.sql`. El esquema `fup-sep` debe permanecer en **Exposed schemas** de Data API. Las tablas nuevas tienen RLS y no conceden acceso directo a visitantes. La lista de administradores vive en `"fup-sep".v2_admin_accounts`. La función `supabase/functions/fup-accounts/index.ts` se publica en Supabase y usa la clave de servicio que Supabase le proporciona internamente. No se guarda esa clave en Vercel ni en GitHub.
 
