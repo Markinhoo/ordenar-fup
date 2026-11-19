@@ -11,20 +11,29 @@
   <div class="control-shell">
     <header class="control-header">
       <a class="control-brand" href="./control.html"><span>↧</span><strong>ORDENAR FUP</strong></a>
-      <div class="header-right"><a id="organizerLink" href="./organizar.html" hidden>Ordenar Excel</a><span id="signedEmail"></span><button id="logout" type="button" hidden>Salir</button></div>
+      <div class="header-right"><a id="organizerLink" href="./organizar.html" hidden>Ordenar Excel</a><button id="usersButton" type="button" hidden>Usuarios</button><button id="accountButton" type="button" hidden>Mi cuenta</button><span id="signedEmail"></span><button id="logout" type="button" hidden>Salir</button></div>
     </header>
 
     <main id="authPanel" class="auth-panel">
       <div class="auth-card">
         <p class="eyebrow">CONTROL COMPARTIDO</p>
         <h1>Inicia sesión en Ordenar FUP</h1>
-        <p id="inviteNotice">La encargada carga el Excel y asigna a cada persona su propio QR. Todos ven el avance en tiempo real.</p>
+        <p id="inviteNotice">Entra con la cuenta que creó la encargada.</p>
         <form id="authForm">
           <label>Correo electrónico<input id="authEmail" type="email" autocomplete="email" required></label>
           <label>Contraseña<input id="authPassword" type="password" autocomplete="current-password" minlength="6" required></label>
           <button class="primary" type="submit">Entrar</button>
         </form>
-        <button id="register" class="text-button" type="button">Crear cuenta con este correo y contraseña</button>
+        <button id="forgotPassword" class="text-button" type="button">Olvidé mi contraseña</button>
+        <form id="recoveryForm" class="stack-form" hidden>
+          <label>Correo de tu cuenta<input id="recoveryEmail" type="email" autocomplete="email" required></label>
+          <button id="loadQuestion" type="button">Ver pregunta de respaldo</button>
+          <p id="recoveryQuestion"></p>
+          <label>Respuesta de respaldo<input id="recoveryAnswer" type="password" autocomplete="off" minlength="8" required></label>
+          <label>Nueva contraseña<input id="recoveryPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+          <button class="primary" type="submit">Restablecer contraseña</button>
+          <button id="cancelRecovery" class="text-button" type="button">Volver al acceso</button>
+        </form>
         <p id="authMessage" class="message" role="status"></p>
       </div>
     </main>
@@ -77,6 +86,15 @@
       </section>
     </main>
   </div>
+
+  <div id="accountModal" class="account-modal" hidden role="dialog" aria-modal="true" aria-label="Administrar cuenta"><div class="account-card">
+    <div class="account-heading"><h2 id="accountTitle">Mi cuenta</h2><button id="closeAccount" type="button" aria-label="Cerrar">×</button></div>
+    <p id="accountMessage" class="message" role="status"></p>
+    <p id="accountEmail"></p>
+    <form id="passwordForm" class="stack-form"><h3>Cambiar mi contraseña</h3><input id="currentPassword" type="password" autocomplete="current-password" placeholder="Contraseña actual" required><input id="newPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Nueva contraseña (8 caracteres mínimo)" required><button class="primary" type="submit">Guardar contraseña</button></form>
+    <form id="questionForm" class="stack-form"><h3>Pregunta de respaldo</h3><p>Elige una pregunta y una respuesta que puedas recordar. La respuesta no se mostrará después.</p><input id="myQuestion" minlength="10" maxlength="160" placeholder="Tu pregunta privada" required><input id="myAnswer" type="password" autocomplete="off" minlength="8" maxlength="160" placeholder="Respuesta (8 caracteres mínimo)" required><button class="primary" type="submit">Guardar pregunta</button></form>
+    <section id="usersSection" hidden><h3>Usuarios del equipo</h3><form id="createUserForm" class="stack-form"><input id="newUserName" placeholder="Nombre de la persona" required><input id="newUserEmail" type="email" placeholder="Correo para iniciar sesión" required><button class="primary" type="submit">Crear usuario</button></form><p id="createdCredential" class="credential" hidden></p><div id="usersList"></div></section>
+  </div></div>
 
   <div id="scanModal" class="scan-modal" hidden role="dialog" aria-modal="true" aria-label="Escanear recuadro del documento"><div class="scan-card"><div class="scan-heading"><strong>Escanear recuadro completo</strong><button id="closeScanner" type="button" aria-label="Cerrar">×</button></div><div id="videoWrap" class="video-wrap"><video id="scanVideo" autoplay playsinline muted></video><div class="scan-guide">PROCEDENCIA · NIVEL · No. DE DOCUMENTO · FECHA</div></div><p id="scanMessage" role="status">Alinea todo el recuadro dentro de la guía.</p><button id="captureScanner" class="primary" type="button">Leer recuadro</button><div id="scanResult" hidden><dl><div><dt>Procedencia</dt><dd id="scanSource"></dd></div><div><dt>Nivel</dt><dd id="scanLevel"></dd></div><div><dt>No. de documento</dt><dd id="scanFolio"></dd></div><div><dt>Fecha</dt><dd id="scanDate"></dd></div></dl><button id="saveScan" class="primary" type="button">Confirmar y guardar escaneo</button><button id="retryScan" type="button">Volver a leer</button></div></div></div>
 

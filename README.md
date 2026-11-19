@@ -4,7 +4,9 @@ Aplicación estática para ordenar RFC y folios dentro de una plantilla Excel, r
 
 ## Nuevo control compartido de documentos
 
-La portada abre el login antes de mostrar el sistema. La cuenta administradora `nomina@fup.com` puede cargar el Excel, ordenar y descargar el archivo, elegir mes y QNA, y escribir el nombre, correo y cantidad de archivos físicos de cada persona. El resto del equipo solo ve la verificación después de iniciar sesión y abrir su QR. Los registros quedan ordenados por RFC y repartidos en ese orden. Cada persona recibe un QR distinto, ligado al correo de su cuenta. Al abrirlo, debe entrar o crear su cuenta y confirmar su correo. El QR se genera de nuevo para cada lote.
+La portada abre el login antes de mostrar el sistema. La cuenta administradora `nomina@fup.com` puede cargar el Excel, ordenar y descargar el archivo, elegir mes y QNA, y escribir el nombre, correo y cantidad de archivos físicos de cada persona. En **Usuarios** crea las cuentas del equipo; el sistema genera una contraseña inicial y confirma la cuenta sin enviar correo. El resto del equipo solo ve la verificación después de iniciar sesión y abrir su QR. Los registros quedan ordenados por RFC y repartidos en ese orden. Cada persona recibe un QR distinto, ligado al correo de su cuenta. El QR se genera de nuevo para cada lote.
+
+Cada usuario puede cambiar su contraseña y configurar una pregunta de respaldo privada en **Mi cuenta**. Si olvida la contraseña, la restablece con su respuesta. Solo se guarda un hash de esa respuesta; tras cinco intentos fallidos, la recuperación se bloquea durante 30 minutos. La cuenta administradora inicial se crea desde Supabase Auth con correo ya confirmado, sin utilizar el registro público del sitio.
 
 Cada colaborador ve el avance general y su asignación. Para registrar un documento, enfoca con el celular el recuadro completo o toma una foto: el lector extrae procedencia, nivel, número de documento y fecha, y pide confirmar la lectura. La casilla del listado está deshabilitada para colaboradores. La encargada puede marcar o desmarcar manualmente con una observación obligatoria. También puede añadir un documento físico ausente del Excel con folio, datos del recuadro y motivo. Todo movimiento queda en la bitácora, con QNA, responsable y fecha; se puede buscar en QNAs anteriores y descargar un CSV completo.
 
@@ -18,7 +20,7 @@ Antes de crear el acceso, el avance solo se guarda en el navegador asociado al E
 
 ## Base de datos
 
-El SQL original está en `supabase/fup-sep.sql`, la migración del control compartido en `supabase/fup-sep-v2.sql` y la restricción de administrador en `supabase/fup-sep-v3.sql`. El esquema `fup-sep` debe permanecer en **Exposed schemas** de Data API. Las funciones nuevas requieren usuarios autenticados; las tablas nuevas tienen RLS y no conceden acceso directo. La lista de cuentas administradoras vive en `"fup-sep".v2_admin_accounts`. En Auth, `https://ordenador-rfc.vercel.app/control.html` está en **Redirect URLs** para que la confirmación de correo vuelva al sitio.
+El SQL original está en `supabase/fup-sep.sql`, el control compartido en `supabase/fup-sep-v2.sql`, la restricción de administrador en `supabase/fup-sep-v3.sql` y el directorio de cuentas y recuperación en `supabase/fup-sep-v4.sql`. El esquema `fup-sep` debe permanecer en **Exposed schemas** de Data API. Las tablas nuevas tienen RLS y no conceden acceso directo a visitantes. La lista de administradores vive en `"fup-sep".v2_admin_accounts`. La función `supabase/functions/fup-accounts/index.ts` se publica en Supabase y usa la clave de servicio que Supabase le proporciona internamente. No se guarda esa clave en Vercel ni en GitHub.
 
 ## Estructura
 

@@ -2,7 +2,7 @@ const $ = (id) => document.getElementById(id);
 const config = window.FUP_SUPABASE;
 const sessionKey = 'ordenar-fup:auth-session';
 const lastBatchKey = 'ordenar-fup:last-v2-batch';
-const state = { session: null, isAdmin: false, batch: null, batches: [], fileRecords: [], fileName: '', section: 'waiting', history: [], historyMore: false, scan: null, stream: null, ocr: null, reading: false, busy: false };
+const state = { session: null, account: null, isAdmin: false, batch: null, batches: [], fileRecords: [], fileName: '', section: 'waiting', history: [], historyMore: false, scan: null, stream: null, ocr: null, reading: false, busy: false };
 
 function message(text, error = false, target = 'appMessage') {
   $(target).textContent = text;
@@ -53,24 +53,42 @@ async function rpc(name, params = {}) {
   return data;
 }
 
+async function accounts(action, params = {}, publicRequest = false) {
+  const token = publicRequest ? config.key : await ensureSession();
+  const response = await fetch(`${config.url}/functions/v1/fup-accounts`, {
+    method: 'POST', cache: 'no-store',
+    headers: { apikey: config.key, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...params }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Error ${response.status}`);
+  return data;
+}
+
 function showAuth() {
   $('authPanel').hidden = false; $('appPanel').hidden = true;
-  $('logout').hidden = true; $('organizerLink').hidden = true; $('signedEmail').textContent = '';
+  $('logout').hidden = true; $('organizerLink').hidden = true; $('accountButton').hidden = true;
+  $('usersButton').hidden = true; $('signedEmail').textContent = '';
   const invite = new URL(location.href).searchParams.get('invite');
   $('inviteNotice').textContent = invite
-    ? 'Este QR está asignado a un correo específico. Entra o crea tu cuenta con ese mismo correo para abrir tu listado.'
-    : 'La cuenta administradora carga el Excel; el equipo verifica los documentos. Todos inician sesión primero.';
+    ? 'Este QR está asignado a un correo específico. Entra con la cuenta que creó la encargada para ese correo.'
+    : 'La cuenta administradora crea usuarios y carga el Excel; el equipo verifica los documentos.';
 }
 
 async function showApp() {
   $('authPanel').hidden = true; $('appPanel').hidden = false;
   $('logout').hidden = false; $('signedEmail').textContent = state.session.email;
+  $('setupTab').hidden = true; $('organizerLink').hidden = true; $('usersButton').hidden = true;
   try {
-    state.isAdmin = (await rpc('v2_my_role')).isAdmin === true;
+    state.account = await accounts('profile');
+    state.isAdmin = state.account.isAdmin === true;
     $('organizerLink').hidden = !state.isAdmin;
+    $('accountButton').hidden = false;
+    $('usersButton').hidden = !state.isAdmin;
     $('setupTab').hidden = !state.isAdmin;
     await bootstrap();
-  } catch (error) { message(error.message, true); showSection(state.isAdmin ? 'setup' : 'waiting'); }
+    if (!state.account.recoverySet) { openAccount(false); message('Configura tu pregunta de respaldo para recuperar tu acceso.'); }
+  } catch (error) { state.isAdmin = false; message(error.message, true); showSection('waiting'); }
 }
 
 async function bootstrap() {
@@ -567,22 +585,107 @@ async function submitAuth(event) {
   } catch (error) { message(error.message, true, 'authMessage'); }
 }
 
-async function register() {
-  if (!$('authEmail').checkValidity() || !$('authPassword').checkValidity()) {
-    $('authForm').reportValidity(); return;
-  }
+function toggleRecovery(show) {
+  $('authForm').hidden = show; $('forgotPassword').hidden = show;
+  $('recoveryForm').hidden = !show;
+  if (show) $('recoveryEmail').value = $('authEmail').value.trim();
+}
+
+async function loadRecoveryQuestion() {
   try {
-    const redirect = new URL('./control.html', location.href).href;
-    const data = await authRequest(`signup?redirect_to=${encodeURIComponent(redirect)}`,
-      { email: $('authEmail').value.trim(), password: $('authPassword').value });
-    if (saveSession(data)) await showApp();
-    else message('Cuenta creada. Revisa tu correo para confirmarla y después inicia sesión.', false, 'authMessage');
+    const result = await accounts('question', { email: $('recoveryEmail').value.trim() }, true);
+    $('recoveryQuestion').textContent = result.question || 'No hay pregunta configurada para esta cuenta. Pide ayuda a la encargada.';
   } catch (error) { message(error.message, true, 'authMessage'); }
+}
+
+async function recoverPassword(event) {
+  event.preventDefault();
+  try {
+    await accounts('recover', { email: $('recoveryEmail').value.trim(), answer: $('recoveryAnswer').value,
+      password: $('recoveryPassword').value }, true);
+    $('authEmail').value = $('recoveryEmail').value.trim();
+    $('recoveryForm').reset(); toggleRecovery(false);
+    message('Contraseña actualizada. Ya puedes entrar.', false, 'authMessage');
+  } catch (error) { message(error.message, true, 'authMessage'); }
+}
+
+function closeAccount() { $('accountModal').hidden = true; $('createdCredential').hidden = true; }
+
+async function loadUsers() {
+  try {
+    const data = await accounts('list-users');
+    $('usersList').replaceChildren();
+    for (const user of data.users) {
+      const row = document.createElement('div');
+      const name = document.createElement('span'); name.textContent = `${user.name} · ${user.email}`;
+      const status = document.createElement('span'); status.textContent = user.recoverySet ? 'Respaldo listo' : 'Sin respaldo';
+      row.append(name, status);
+      if (user.email !== 'nomina@fup.com') {
+        const reset = document.createElement('button'); reset.type = 'button'; reset.textContent = 'Nueva clave';
+        reset.addEventListener('click', () => resetUser(user)); row.appendChild(reset);
+      }
+      $('usersList').appendChild(row);
+    }
+  } catch (error) { message(error.message, true, 'accountMessage'); }
+}
+
+function openAccount(showUsers = false) {
+  if (!state.account) return;
+  $('accountModal').hidden = false;
+  $('accountTitle').textContent = showUsers ? 'Administrar usuarios' : 'Mi cuenta';
+  $('accountEmail').textContent = `${state.account.name} · ${state.account.email}`;
+  $('usersSection').hidden = !state.isAdmin || !showUsers;
+  $('myQuestion').value = state.account.question || '';
+  message('', false, 'accountMessage');
+  if (showUsers && state.isAdmin) loadUsers();
+}
+
+async function saveRecoveryQuestion(event) {
+  event.preventDefault();
+  try {
+    await accounts('set-recovery', { question: $('myQuestion').value, answer: $('myAnswer').value });
+    state.account.question = $('myQuestion').value.trim(); state.account.recoverySet = true;
+    $('myAnswer').value = '';
+    message('Pregunta de respaldo guardada.', false, 'accountMessage');
+  } catch (error) { message(error.message, true, 'accountMessage'); }
+}
+
+async function changePassword(event) {
+  event.preventDefault();
+  try {
+    await accounts('change-password', { currentPassword: $('currentPassword').value, password: $('newPassword').value });
+    $('passwordForm').reset();
+    message('Contraseña actualizada.', false, 'accountMessage');
+  } catch (error) { message(error.message, true, 'accountMessage'); }
+}
+
+async function createUser(event) {
+  event.preventDefault();
+  if (!state.isAdmin) return;
+  try {
+    const result = await accounts('create-user', { name: $('newUserName').value, email: $('newUserEmail').value });
+    $('createUserForm').reset();
+    $('createdCredential').textContent = `${result.name} · ${result.email} · Contraseña inicial: ${result.password}. Entrégala a esta persona de forma privada; se muestra solo ahora.`;
+    $('createdCredential').hidden = false;
+    message('Usuario creado sin confirmación por correo.', false, 'accountMessage');
+    await loadUsers();
+  } catch (error) { message(error.message, true, 'accountMessage'); }
+}
+
+async function resetUser(user) {
+  if (!state.isAdmin || !confirm(`¿Generar una nueva contraseña para ${user.name} (${user.email})? La anterior dejará de servir.`)) return;
+  try {
+    const result = await accounts('reset-user', { email: user.email });
+    $('createdCredential').textContent = `${result.email} · Nueva contraseña: ${result.password}. Entrégala de forma privada; se muestra solo ahora.`;
+    $('createdCredential').hidden = false;
+    message('Contraseña inicial renovada.', false, 'accountMessage');
+  } catch (error) { message(error.message, true, 'accountMessage'); }
 }
 
 function logout() {
   if (state.session) authRequest('logout', {}, state.session.access_token).catch(() => {});
-  localStorage.removeItem(sessionKey); state.session = null; state.batch = null; state.isAdmin = false;
+  localStorage.removeItem(sessionKey); state.session = null; state.account = null;
+  state.batch = null; state.isAdmin = false; closeAccount();
   showAuth();
 }
 
@@ -596,8 +699,18 @@ function init() {
 }
 
 $('authForm').addEventListener('submit', submitAuth);
-$('register').addEventListener('click', register);
+$('forgotPassword').addEventListener('click', () => toggleRecovery(true));
+$('cancelRecovery').addEventListener('click', () => toggleRecovery(false));
+$('loadQuestion').addEventListener('click', loadRecoveryQuestion);
+$('recoveryForm').addEventListener('submit', recoverPassword);
 $('logout').addEventListener('click', logout);
+$('accountButton').addEventListener('click', () => openAccount(false));
+$('usersButton').addEventListener('click', () => openAccount(true));
+$('closeAccount').addEventListener('click', closeAccount);
+$('accountModal').addEventListener('click', (event) => { if (event.target === $('accountModal')) closeAccount(); });
+$('questionForm').addEventListener('submit', saveRecoveryQuestion);
+$('passwordForm').addEventListener('submit', changePassword);
+$('createUserForm').addEventListener('submit', createUser);
 $('setupTab').addEventListener('click', () => showSection('setup'));
 $('listTab').addEventListener('click', () => showSection('list'));
 $('historyTab').addEventListener('click', () => { showSection('history'); loadHistory(); });
@@ -626,6 +739,10 @@ $('scanModal').addEventListener('click', (event) => { if (event.target === $('sc
 $('scanPhoto').addEventListener('change', (event) => { const file = event.target.files[0]; event.target.value = ''; photoScan(file); });
 $('saveScan').addEventListener('click', saveScan);
 $('retryScan').addEventListener('click', () => { state.scan = null; $('scanResult').hidden = true; $('scanMessage').textContent = 'Vuelve a leer el recuadro.'; });
-document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('scanModal').hidden) closeScanner(); });
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  if (!$('scanModal').hidden) closeScanner();
+  else if (!$('accountModal').hidden) closeAccount();
+});
 setInterval(refreshBatch, 5000);
 init();
