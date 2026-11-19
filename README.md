@@ -1,6 +1,6 @@
 # Ordenar FUP
 
-Aplicación React con Vite para ordenar RFC y folios dentro de una plantilla Excel, repartir los registros entre personas con colores y verificar los documentos físicos por su número de folio. El archivo se procesa en el navegador. El tema claro u oscuro se guarda en este proyecto.
+Aplicación React con Vite para ordenar RFC y folios dentro de una plantilla Excel, repartir los registros entre personas con colores y verificar los documentos físicos por su número de folio. El archivo se procesa en el navegador. El tema claro u oscuro se guarda en este proyecto. El selector animado de sol y luna sigue el patrón del Gestor de Contestaciones y el menú lateral plegable sigue el de hechi-go; el diseño de Ordenar FUP usa una paleta neutra.
 
 ## Nuevo control compartido de documentos
 

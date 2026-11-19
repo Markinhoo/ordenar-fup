@@ -1,0 +1,22 @@
+.app-sidebar{position:fixed;z-index:25;top:8px;bottom:8px;left:8px;width:62px;padding:10px 7px;display:flex;flex-direction:column;gap:8px;overflow:visible;border:1px solid #666;border-radius:30px;background:linear-gradient(165deg,#333,#171717 56%,#0c0c0c);box-shadow:0 14px 30px #0005,inset 0 1px #fff3;color:#fff;transition:width .24s ease,box-shadow .24s ease}
+.app-sidebar.is-expanded{width:266px;box-shadow:9px 16px 34px #0007,inset 0 1px #fff3}
+.app-sidebar nav,.sidebar-actions{display:flex;flex:1 1 0;flex-direction:column;justify-content:space-around;gap:3px}
+.app-sidebar .sidebar-heading{display:flex;align-items:center}
+.app-sidebar button,.app-sidebar a{position:relative;display:flex;align-items:center;gap:10px;width:100%;height:46px;min-height:46px;padding:0 13px;border:0;border-radius:0;background:transparent;color:#c6c6c6;text-decoration:none;text-align:left;font:600 13px/1.15 'DM Sans',sans-serif;cursor:pointer;transition:color .2s ease}
+.app-sidebar button:hover,.app-sidebar a:hover,.app-sidebar button:focus-visible,.app-sidebar a:focus-visible{color:#fff;outline:none}
+.app-sidebar svg,.sidebar-mobile-trigger svg{position:relative;z-index:1;flex:0 0 20px;width:20px;height:20px;transition:filter .2s ease,transform .2s ease}
+.app-sidebar button:hover svg,.app-sidebar a:hover svg,.app-sidebar button:focus-visible svg,.app-sidebar a:focus-visible svg{transform:scale(1.16);filter:drop-shadow(0 0 6px #fff)}
+.app-sidebar .active{color:#fff}
+.app-sidebar .active::before{content:'';position:absolute;top:50%;left:1px;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 35% 28%,#fff,#e9e9e9 55%,#bdbdbd);box-shadow:0 0 0 3px #fff3,0 0 15px 4px #fffb;transform:translateY(-50%)}
+.app-sidebar .active svg{color:#171717}
+.app-sidebar:not(.is-expanded) button::after,.app-sidebar:not(.is-expanded) a::after{content:attr(data-tooltip);position:absolute;top:50%;left:calc(100% + 12px);z-index:1;width:max-content;padding:6px 9px;border-radius:7px;background:#171717;box-shadow:0 5px 14px #0006;color:#fff;font:600 12px 'DM Sans',sans-serif;opacity:0;pointer-events:none;transform:translate(-4px,-50%);transition:opacity .16s ease,transform .16s ease}
+.app-sidebar:not(.is-expanded) button:is(:hover,:focus-visible)::after,.app-sidebar:not(.is-expanded) a:is(:hover,:focus-visible)::after{opacity:1;transform:translate(0,-50%)}
+.app-sidebar .sidebar-label{display:none;white-space:nowrap}
+.app-sidebar.is-expanded .sidebar-label{display:inline}
+.app-sidebar.is-expanded button,.app-sidebar.is-expanded a{gap:28px}
+.sidebar-actions{padding-top:8px}.sidebar-actions button:last-child{color:#e0b6b6}
+.sidebar-mobile-trigger,.sidebar-backdrop{display:none}
+@media(max-height:620px) and (min-width:761px){.app-sidebar{overflow-y:auto}.app-sidebar nav,.sidebar-actions{flex:0 0 auto;gap:2px}.app-sidebar button,.app-sidebar a{height:38px;min-height:38px}}
+@media(max-width:760px){.sidebar-mobile-trigger{display:grid;place-items:center;width:33px;height:33px;border:1px solid #bbb;border-radius:9px;background:#f5f5f5;color:#222}.sidebar-backdrop{display:block;position:fixed;inset:0;z-index:24;border:0;background:#0008}.app-sidebar{top:7px;bottom:7px;left:7px;width:266px;transform:translateX(calc(-100% - 14px));transition:transform .24s ease,box-shadow .24s ease}.app-sidebar.is-expanded{transform:translateX(0)}.app-sidebar .sidebar-label{display:inline}.app-sidebar button,.app-sidebar a{gap:28px}}
+@media(prefers-reduced-motion:reduce){.app-sidebar,.app-sidebar button,.app-sidebar a,.app-sidebar svg,.sidebar-mobile-trigger svg{transition:none}}
+@media(max-width:760px){.sidebar-mobile-trigger{position:fixed;top:6px;left:9px;z-index:26}}

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { isAdmin, readSession } from '../lib/api';
+import { isAdmin, logout, readSession } from '../lib/api';
 import { readBook, generateBook, colorFor } from '../lib/excelBook';
 import { distribute } from '../lib/qna';
 import { downloadBlob } from '../lib/download';
 import { useTheme } from '../lib/theme';
 import ThemeToggle from '../components/ThemeToggle';
+import AppSidebar from '../components/AppSidebar';
 import '../styles/organizer.css';
 import '../styles/organizer-react.css';
 
@@ -61,9 +62,10 @@ export default function OrganizerPage() {
 
   if (!ready) return <div className="organizer-loading" role="status">Comprobando acceso de administrador…</div>;
 
-  return <main className="shell">
+  return <main className="shell organizer-with-sidebar">
+    <AppSidebar page="organizer" admin onLogout={async () => { await logout(); location.replace('/'); }} />
     <header className="topbar"><div className="brand"><span className="brand-mark">↧</span><span>ORDENAR <b>FUP</b></span></div>
-      <div className="organizer-header-actions"><span className="private-pill"><span className="private-dot" /> Excel local · control compartido</span><ThemeToggle theme={theme} onToggle={toggleTheme} /><a href="/">Control</a></div>
+      <div className="organizer-header-actions"><span className="private-pill"><span className="private-dot" /> Excel local · control compartido</span><ThemeToggle theme={theme} onToggle={toggleTheme} /></div>
     </header>
     <section className="hero"><div className="eyebrow"><span className="eyebrow-line" /> ORGANIZA TU LISTADO</div>
       <h1>Tu Excel FUP,<br /><em>ordenado y verificado.</em></h1>

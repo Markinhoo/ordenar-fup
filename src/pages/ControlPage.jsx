@@ -3,6 +3,7 @@ import { accounts, lastBatchKey, logout, readSession, rpc } from '../lib/api';
 import { qnaLabel } from '../lib/qna';
 import { useTheme } from '../lib/theme';
 import ThemeToggle from '../components/ThemeToggle';
+import AppSidebar from '../components/AppSidebar';
 import LoginPanel from '../components/LoginPanel';
 import AccountModal from '../components/AccountModal';
 import BatchSetup from '../components/BatchSetup';
@@ -131,17 +132,18 @@ export default function ControlPage() {
     : section === 'waiting' ? 'Abre tu QR para acceder al listado asignado.'
       : batch ? `${qnaLabel(batch.qna)} · ${batch.fileName} · ${batch.records.length} registros` : '';
 
-  return <div className="control-shell">
+  return <div className={`control-shell${session && account ? ' has-sidebar' : ''}`}>
     <header className="control-header">
       <a className="control-brand" href="/"><span>↧</span><strong>ORDENAR FUP</strong></a>
       <div className="header-right"><ThemeToggle theme={theme} onToggle={toggleTheme} />
         {session && account && <>
-          {isAdmin && <><a href="/organizar">Ordenar Excel</a><button type="button" onClick={() => { setAccountView('users'); loadUsers(); }}>Usuarios</button></>}
-          <button type="button" onClick={() => setAccountView('me')}>Mi cuenta</button>
-          <span>{session.email}</span><button type="button" onClick={signOut}>Salir</button>
+          <span>{session.email}</span>
         </>}
       </div>
     </header>
+    {session && account && <AppSidebar admin={isAdmin} section={section} hasBatches={batches.length > 0}
+      onNavigate={(next) => setSection(next === 'list' && !batch ? isAdmin ? 'setup' : 'waiting' : next)}
+      onUsers={() => { setAccountView('users'); loadUsers(); }} onAccount={() => setAccountView('me')} onLogout={signOut} />}
     {!session ? <LoginPanel onLogin={setSession} /> : loading || !account ? <main className="auth-panel"><div className="auth-card"><p role="status">{loading ? 'Cargando tu cuenta…' : 'No se pudo abrir tu cuenta.'}</p>{!loading && <><p className="message error">{notice.text}</p><button type="button" onClick={signOut}>Salir e intentar de nuevo</button></>}</div></main> : <main className="app-panel">
       <div className="app-top"><div><p className="eyebrow">VERIFICACIÓN FUP</p><h1>{title}</h1><p>{meta}</p></div>
         <div className="top-actions">
@@ -150,11 +152,6 @@ export default function ControlPage() {
           </select><button type="button" onClick={() => setSection('setup')}>Nuevo lote</button></>}
         </div>
       </div>
-      <nav className="control-tabs" aria-label="Secciones">
-        {isAdmin && <button type="button" className={section === 'setup' ? 'active' : ''} onClick={() => setSection('setup')}>Preparar lote</button>}
-        <button type="button" className={section === 'list' ? 'active' : ''} onClick={() => setSection(batch ? 'list' : isAdmin ? 'setup' : 'waiting')}>Listado y avance</button>
-        {isAdmin && batches.length > 0 && <button type="button" className={section === 'history' ? 'active' : ''} onClick={() => setSection('history')}>Bitácora por QNA</button>}
-      </nav>
       <p className={`message${notice.error ? ' error' : ''}`} role="status" aria-live="polite">{notice.text}</p>
       {isAdmin && <BatchSetup users={users} hidden={section !== 'setup'} onCreate={createBatch} onMessage={message} />}
       <section className="section waiting-section" hidden={section !== 'waiting'}><div className="panel waiting-card"><h2>Listo para verificar</h2><p>Iniciaste sesión. Abre el QR que te entregó la encargada para entrar a tu listado y comenzar a escanear documentos.</p></div></section>

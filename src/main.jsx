@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
-import './styles/theme.css';
+import './styles/appearance.css';
 
 const ControlPage = lazy(() => import('./pages/ControlPage'));
 const OrganizerPage = lazy(() => import('./pages/OrganizerPage'));

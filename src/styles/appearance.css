@@ -1,0 +1,47 @@
+:root{color-scheme:light;background:#f0f0f0;color:#171717}
+:root[data-theme='dark']{color-scheme:dark;background:#101010;color:#f3f3f3}
+:root[data-theme='dark'] body{background:#101010;color:#f3f3f3}
+.app-loading{min-height:100dvh;display:grid;place-items:center;font:600 15px sans-serif;color:#444}
+:root[data-theme='dark'] .app-loading{color:#ddd}
+
+button.themeSwitch{position:relative;isolation:isolate;flex:0 0 72px;width:72px;height:38px;min-width:72px;padding:0;overflow:hidden;display:block;border:1px solid #8c9fc9;border-radius:999px;background:linear-gradient(180deg,#5f80d1 0%,#9eafe0 58%,#ffe68c 100%);box-shadow:inset 0 2px 5px #fff9,0 2px 5px #0002;transition:background .45s ease,border-color .45s ease,box-shadow .45s ease}
+button.themeSwitch[aria-checked='true']{border-color:#3b4667;background:linear-gradient(180deg,#18233b,#39445e);box-shadow:inset 0 2px 6px #0008,0 2px 5px #0004}
+.themeSwitch:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.themeSwitchStars,.themeSwitchClouds{position:absolute;inset:0;pointer-events:none;transition:opacity .4s ease}
+.themeSwitchStars{opacity:0}.themeSwitchStars::before,.themeSwitchStars::after,.themeSwitchClouds::before,.themeSwitchClouds::after{content:'';position:absolute;inset:0}
+.themeSwitchStars::before{background:radial-gradient(circle at 17% 26%,#fff 0 1px,transparent 2px),radial-gradient(circle at 45% 66%,#fff 0 1px,transparent 2px),radial-gradient(circle at 79% 20%,#fff 0 1px,transparent 2px);animation:themeStarsNear 2.8s ease-in-out infinite}
+.themeSwitchStars::after{background:radial-gradient(circle at 31% 58%,#fff 0 1px,transparent 2px),radial-gradient(circle at 64% 38%,#fff 0 1px,transparent 2px),radial-gradient(circle at 88% 70%,#fff 0 1px,transparent 2px);animation:themeStarsFar 3.6s ease-in-out infinite}
+.themeSwitchClouds{opacity:1}.themeSwitchClouds::before,.themeSwitchClouds::after{right:auto;width:200%;background-size:50% 100%;background-repeat:repeat-x;animation-name:themeCloudLoop;animation-timing-function:linear;animation-iteration-count:infinite}
+.themeSwitchClouds::before{background-image:radial-gradient(ellipse at 52% 90%,#fff9 0 19%,transparent 20%),radial-gradient(ellipse at 78% 106%,#fffc 0 25%,transparent 26%);animation-duration:7s}
+.themeSwitchClouds::after{background-image:radial-gradient(ellipse at 28% 110%,#fff9 0 21%,transparent 22%),radial-gradient(ellipse at 95% 82%,#fff8 0 17%,transparent 18%);animation-duration:11s}
+.themeSwitch[aria-checked='true'] .themeSwitchStars{opacity:1}.themeSwitch[aria-checked='true'] .themeSwitchClouds{opacity:0}
+@keyframes themeStarsNear{0%,100%{opacity:.12;filter:brightness(1)}45%{opacity:1;filter:brightness(2) drop-shadow(0 0 3px #fff)}70%{opacity:.35;filter:brightness(1)}}
+@keyframes themeStarsFar{0%,100%{opacity:.9;filter:brightness(1.7) drop-shadow(0 0 2px #fff)}35%{opacity:.1;filter:brightness(1)}75%{opacity:1;filter:brightness(2) drop-shadow(0 0 3px #fff)}}
+@keyframes themeCloudLoop{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+.themeSwitchThumb{position:absolute;z-index:1;top:3px;left:3px;width:30px;height:30px;border:1px solid #fff2a7;border-radius:50%;background:#ffe500;box-shadow:0 0 0 3px #ffdf5680,0 0 0 7px #ffe78255,0 0 0 11px #fff0a53d,0 2px 5px #755c3455;transition:transform .45s cubic-bezier(.2,.8,.2,1),background .45s ease,border-color .45s ease,box-shadow .45s ease}
+.themeSwitch[aria-checked='true'] .themeSwitchThumb{transform:translateX(34px);border-color:#f7f8ff;background:radial-gradient(circle at 31% 57%,#b8c1df 0 3px,transparent 3.5px),radial-gradient(circle at 63% 31%,#b8c1df 0 5px,transparent 5.5px),radial-gradient(circle at 67% 72%,#b8c1df 0 3.5px,transparent 4px),#dce2f3;box-shadow:0 0 0 3px #dce2f344,0 0 0 7px #dce2f322,0 2px 6px #0006}
+
+.control-shell.has-sidebar{max-width:none;margin-left:82px}
+:root[data-theme='dark'] .control-header,:root[data-theme='dark'] .topbar,:root[data-theme='dark'] .shell footer{border-color:#353535}
+:root[data-theme='dark'] .control-brand,:root[data-theme='dark'] .header-right,:root[data-theme='dark'] .organizer-header-actions a{color:#eee}
+:root[data-theme='dark'] .auth-card,:root[data-theme='dark'] .setup-card,:root[data-theme='dark'] .panel,:root[data-theme='dark'] .account-card,:root[data-theme='dark'] .scan-card,:root[data-theme='dark'] .shell .card,:root[data-theme='dark'] .shell .result-card,:root[data-theme='dark'] .camera-panel{background:#202020;border-color:#383838;color:#f0f0f0;box-shadow:none}
+:root[data-theme='dark'] .auth-card h1,:root[data-theme='dark'] .setup-card h2,:root[data-theme='dark'] .panel h2,:root[data-theme='dark'] .account-card h2,:root[data-theme='dark'] .shell h1,:root[data-theme='dark'] .shell h2,:root[data-theme='dark'] .shell strong,:root[data-theme='dark'] td strong{color:#f4f4f4}
+:root[data-theme='dark'] .auth-card p,:root[data-theme='dark'] .setup-card p,:root[data-theme='dark'] .panel p,:root[data-theme='dark'] .panel small,:root[data-theme='dark'] .app-top p:last-child,:root[data-theme='dark'] .shell p,:root[data-theme='dark'] .shell small,:root[data-theme='dark'] .shell footer,:root[data-theme='dark'] .auth-card label,:root[data-theme='dark'] .stack-form label,:root[data-theme='dark'] .qna-fields label{color:#b8b8b8}
+:root[data-theme='dark'] input,:root[data-theme='dark'] select,:root[data-theme='dark'] textarea,:root[data-theme='dark'] .worker-target{background:#171717!important;color:#f1f1f1!important;border-color:#4b4b4b!important}
+:root[data-theme='dark'] input::placeholder,:root[data-theme='dark'] textarea::placeholder{color:#9f9f9f}
+:root[data-theme='dark'] .file-picker,:root[data-theme='dark'] .photo-button,:root[data-theme='dark'] .header-right button:not(.themeSwitch),:root[data-theme='dark'] .top-actions button,:root[data-theme='dark'] .panel-heading button,:root[data-theme='dark'] .history-filters button,:root[data-theme='dark'] .worker-qr button,:root[data-theme='dark'] .dropzone,:root[data-theme='dark'] .file-summary,:root[data-theme='dark'] .person-row,:root[data-theme='dark'] .verify-file{background:#292929;color:#e2e2e2;border-color:#555}
+:root[data-theme='dark'] .primary,:root[data-theme='dark'] .control-tabs button.active{background:#eee;color:#111;border-color:#eee}
+:root[data-theme='dark'] .progress-track{background:#3b3b3b}
+:root[data-theme='dark'] .progress-track>div{background:#bbb}
+:root[data-theme='dark'] .records-scroll,:root[data-theme='dark'] .history-scroll,:root[data-theme='dark'] td,:root[data-theme='dark'] th,:root[data-theme='dark'] .worker-progress-row,:root[data-theme='dark'] .worker-qr,:root[data-theme='dark'] .verify-list,:root[data-theme='dark'] .verify-row{border-color:#393939}
+:root[data-theme='dark'] th{background:#292929;color:#d6d6d6}:root[data-theme='dark'] td{color:#dedede}
+:root[data-theme='dark'] .record-checked,:root[data-theme='dark'] .verify-row.checked{background:#303030}:root[data-theme='dark'] .record-manual{background:#38332a}
+:root[data-theme='dark'] .scan-card dl div,:root[data-theme='dark'] .account-card #usersList>div{background:#2c2c2c}
+:root[data-theme='dark'] .message:not(.error),:root[data-theme='dark'] .status:not(.error),:root[data-theme='dark'] .info-line,:root[data-theme='dark'] .field-help,:root[data-theme='dark'] .person-row label,:root[data-theme='dark'] .person-row small,:root[data-theme='dark'] .steps .active,:root[data-theme='dark'] .eyebrow,:root[data-theme='dark'] .section-number{color:#ccc}
+:root[data-theme='dark'] .result-actions button{background:#eee;color:#111}
+:root[data-theme='dark'] .private-pill,:root[data-theme='dark'] .count-control button,:root[data-theme='dark'] .card-icon,:root[data-theme='dark'] .upload-icon{background:#303030;color:#dedede;border-color:#505050}
+:root[data-theme='dark'] .count-control{border-color:#505050}
+:root[data-theme='dark'] .mode-tabs button.selected{background:#dedede;border-color:#dedede;color:#151515}
+:root[data-theme='dark'] .activate-page{background:#101010;color:#f2f2f2}:root[data-theme='dark'] .activate-card{background:#202020;border-color:#383838;box-shadow:none}:root[data-theme='dark'] .activate-card p{color:#b8b8b8}:root[data-theme='dark'] .activate-card a{color:#eee}
+@media(max-width:760px){.control-shell.has-sidebar{margin-left:0}.control-shell.has-sidebar .control-header{padding-left:40px}}
+@media(prefers-reduced-motion:reduce){button.themeSwitch,.themeSwitchStars,.themeSwitchClouds,.themeSwitchThumb{transition:none}.themeSwitchStars::before,.themeSwitchStars::after,.themeSwitchClouds::before,.themeSwitchClouds::after{animation:none}}
