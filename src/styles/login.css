@@ -106,3 +106,15 @@ body,:root[data-theme='dark'] body{background:var(--fup-wallpaper) center/cover 
 
 @media(max-width:920px){.control-shell:not(.is-auth) .control-header{height:103px;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:51px 43px;gap:0 8px}.control-shell .header-nav{grid-column:1/-1;grid-row:2;justify-content:stretch}.header-nav button{flex:1;min-width:0}.control-header .header-right{grid-column:2;grid-row:1}}
 @media(max-width:760px){.control-shell:not(.is-auth){padding:0 8px}.control-shell:not(.is-auth) .control-header{height:94px;grid-template-rows:47px 40px;padding:0 7px}.header-nav{gap:3px}.header-nav button{min-height:34px;padding:5px 3px;font-size:12px}.nav-long{display:none}.nav-short{display:inline}.setup-section{grid-template-columns:1fr;grid-template-rows:minmax(0,.7fr) minmax(0,1.3fr)}.setup-card{padding:12px}.setup-card h2,.panel h2{font-size:17px}.setup-card p,.panel p,.panel>small{font-size:13px}.worker-heading,.worker-row{grid-template-columns:27px minmax(0,1fr) 85px;gap:7px}.worker-swatch{width:24px;height:24px}.worker-row select,.worker-target{font-size:12px;padding:7px 5px}.worker-target{white-space:nowrap}.app-top h1{font-size:19px}.top-actions select,.top-actions button{font-size:11px}}
+
+/* Keep the three cells on one line even when Vite loads control.css last. */
+.control-shell .setup-card .worker-heading,
+.control-shell .setup-card .worker-row{display:grid;grid-template-columns:30px minmax(0,1fr) 112px;align-items:center;gap:10px;min-width:0}
+.control-shell .setup-card .worker-row .worker-swatch{grid-column:1;grid-row:1;width:27px;height:27px}
+.control-shell .setup-card .worker-row select{grid-column:2;grid-row:1;min-width:0;width:100%;min-height:43px;font-size:14px}
+.control-shell .setup-card .worker-row .worker-target{grid-column:3;grid-row:1;min-width:0;width:100%;min-height:43px;display:grid;place-items:center;padding:7px 4px;font-size:14px;white-space:nowrap}
+.control-shell .setup-card h2{font-size:19px}
+.control-shell .setup-card p{font-size:14px;line-height:1.45}
+.control-shell .setup-card .qna-fields label,
+.control-shell .setup-card .count-label{font-size:14px}
+@media(max-width:760px){.control-shell .setup-card .worker-heading,.control-shell .setup-card .worker-row{grid-template-columns:27px minmax(0,1fr) 85px;gap:7px}.control-shell .setup-card .worker-row .worker-swatch{width:24px;height:24px}.control-shell .setup-card .worker-row select,.control-shell .setup-card .worker-row .worker-target{font-size:12px;padding:7px 4px}}
