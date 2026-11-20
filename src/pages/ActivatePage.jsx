@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { accounts } from '../lib/api';
 import { useTheme } from '../lib/theme';
 import ThemeToggle from '../components/ThemeToggle';
+import { securityQuestions } from '../lib/securityQuestions';
 import '../styles/activate.css';
 
 function readToken() {
@@ -35,7 +36,9 @@ export default function ActivatePage() {
     <p>Usuario: <strong>nomina</strong>. Define tu contraseña y una pregunta que solo tú puedas responder. Este enlace vence en 24 horas y funciona una vez.</p>
     {valid && !done && <form onSubmit={activate}>
       <label>Contraseña<input type="password" autoComplete="new-password" minLength="8" maxLength="128" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-      <label>Pregunta de respaldo<input minLength="10" maxLength="160" placeholder="Una pregunta que solo tú sepas responder" value={question} onChange={(event) => setQuestion(event.target.value)} required /></label>
+      <label>Pregunta de respaldo<select value={question} onChange={(event) => setQuestion(event.target.value)} required>
+        <option value="">Selecciona una pregunta</option>{securityQuestions.map((item) => <option key={item} value={item}>{item}</option>)}
+      </select></label>
       <label>Respuesta de respaldo<input type="password" autoComplete="off" minLength="1" maxLength="160" value={answer} onChange={(event) => setAnswer(event.target.value)} required /></label>
       <button disabled={busy}>Activar mi cuenta</button>
     </form>}

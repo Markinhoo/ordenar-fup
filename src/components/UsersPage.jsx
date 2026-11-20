@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { accounts } from '../lib/api';
+import { securityQuestions } from '../lib/securityQuestions';
 
 export default function UsersPage({ account, users, hidden, onUsersChanged, onAccountChanged }) {
   const [username, setUsername] = useState('');
@@ -52,7 +53,9 @@ export default function UsersPage({ account, users, hidden, onUsersChanged, onAc
         <label>Nombre para el listado (opcional)<input autoComplete="off" maxLength="80" placeholder="Se usará el nombre de usuario si lo dejas vacío" value={name} onChange={(event) => setName(event.target.value)} /></label>
         <label>Rol<select value={role} onChange={(event) => setRole(event.target.value)}><option value="operador">Operador · escanea documentos</option><option value="administrador">Administrador · gestiona cuentas y lotes</option></select></label>
         <label>Contraseña inicial<input type="password" autoComplete="new-password" minLength="8" maxLength="128" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-        <label>Pregunta de seguridad<input minLength="10" maxLength="160" placeholder="Por ejemplo, ¿Lugar de nacimiento?" value={question} onChange={(event) => setQuestion(event.target.value)} required /></label>
+        <label>Pregunta de seguridad<select value={question} onChange={(event) => setQuestion(event.target.value)} required>
+          <option value="">Selecciona una pregunta</option>{securityQuestions.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select></label>
         <label>Respuesta de seguridad<input type="password" autoComplete="off" minLength="1" maxLength="160" placeholder="Puede ser una respuesta corta" value={answer} onChange={(event) => setAnswer(event.target.value)} required /></label>
         <button className="primary" disabled={busy}>Crear usuario</button>
       </form>

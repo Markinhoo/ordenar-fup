@@ -52,3 +52,5 @@ El proyecto `ordenar-fup` en Vercel está conectado a la rama `main` de `Markinh
 ## Administración de cuentas
 
 `supabase/fup-sep-v8.sql` se aplica después de `v7`. Permite nombres de usuario con espacios y protege a la última cuenta administradora contra eliminación. **Administrar usuarios** es una página completa para buscar, editar, cambiar roles y eliminar cuentas. La respuesta de seguridad puede ser corta. Los movimientos de cuentas eliminadas permanecen en la bitácora; sus lotes administrativos pasan al administrador que las elimina.
+
+Al crear una cuenta o cambiar la pregunta de respaldo, se elige entre lugar de nacimiento, nombre de mascota y nombre de la primera escuela. Las preguntas personalizadas guardadas antes siguen apareciendo al recuperar una cuenta; al reemplazarlas se debe elegir una de las tres opciones.

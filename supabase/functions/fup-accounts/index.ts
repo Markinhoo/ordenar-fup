@@ -4,6 +4,11 @@ const projectUrl = Deno.env.get('SUPABASE_URL') || '';
 const publicKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const secretKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const origins = new Set(['https://ordenador-rfc.vercel.app', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174', 'http://127.0.0.1:5175', 'http://127.0.0.1:5176', 'http://127.0.0.1:5177']);
+const securityQuestions = new Set([
+  '¿Cuál es tu lugar de nacimiento?',
+  '¿Cuál es el nombre de tu mascota?',
+  '¿Cuál es el nombre de tu primera escuela?',
+]);
 const encoder = new TextEncoder();
 
 function reply(data, status = 200, origin = '') {
@@ -130,7 +135,7 @@ Deno.serve(async (request) => {
       const question = String(input.question || '').trim();
       const answer = normalizedAnswer(input.answer);
       if (!/^[a-f0-9]{64}$/.test(token) || !validPassword(input.password) ||
-          question.length < 10 || question.length > 160 || !answer.length || answer.length > 160)
+          !securityQuestions.has(question) || !answer.length || answer.length > 160)
         return reply({ error: 'Completa el enlace, contraseña y pregunta de respaldo' }, 400, origin);
       const userId = await supabase('/rest/v1/rpc/v4_consume_admin_activation', 'POST',
         { p_token: token }, secretKey, 'fup-sep');
@@ -164,8 +169,8 @@ Deno.serve(async (request) => {
     if (input.action === 'set-recovery') {
       const question = String(input.question || '').trim();
       const answer = normalizedAnswer(input.answer);
-      if (question.length < 10 || question.length > 160 || !answer.length || answer.length > 160)
-        return reply({ error: 'Pregunta de 10 a 160 caracteres y respuesta de 1 a 160' }, 400, origin);
+      if (!securityQuestions.has(question) || !answer.length || answer.length > 160)
+        return reply({ error: 'Selecciona una pregunta de la lista y escribe tu respuesta.' }, 400, origin);
       const salt = crypto.randomUUID();
       await supabase(`/rest/v1/v3_accounts?user_id=eq.${encodeURIComponent(user.id)}`, 'PATCH',
         { recovery_question: question, recovery_salt: salt, recovery_hash: await answerHash(answer, salt),
@@ -204,7 +209,7 @@ Deno.serve(async (request) => {
       if (name.length < 2 || name.length > 80) return reply({ error: 'El nombre para el listado debe tener entre 2 y 80 caracteres.' }, 400, origin);
       if (!validPassword(input.password)) return reply({ error: 'La contraseña debe tener entre 8 y 128 caracteres.' }, 400, origin);
       if (!['administrador', 'operador'].includes(role)) return reply({ error: 'Selecciona un rol válido.' }, 400, origin);
-      if (question.length < 10 || question.length > 160) return reply({ error: 'La pregunta debe tener entre 10 y 160 caracteres.' }, 400, origin);
+      if (!securityQuestions.has(question)) return reply({ error: 'Selecciona una pregunta de la lista.' }, 400, origin);
       if (!answer.length || answer.length > 160) return reply({ error: 'Escribe una respuesta de seguridad de hasta 160 caracteres.' }, 400, origin);
       if (await accountByUsername(username)) return reply({ error: 'Ese nombre de usuario ya existe' }, 409, origin);
       const email = `${crypto.randomUUID()}@users.ordenar-fup.invalid`;

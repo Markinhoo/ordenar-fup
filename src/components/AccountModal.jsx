@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { accounts } from '../lib/api';
+import { securityQuestions } from '../lib/securityQuestions';
 
 export default function AccountModal({ account, view, onClose, onAccountChanged }) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [question, setQuestion] = useState(account.question || '');
+  const [question, setQuestion] = useState(securityQuestions.includes(account.question) ? account.question : '');
   const [answer, setAnswer] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState(false);
@@ -31,7 +32,10 @@ export default function AccountModal({ account, view, onClose, onAccountChanged 
       </form>
       <form className="stack-form" onSubmit={(event) => { event.preventDefault(); run('set-recovery', { question, answer }, 'Pregunta de respaldo guardada.', () => { onAccountChanged({ ...account, question: question.trim(), recoverySet: true }); setAnswer(''); }); }}>
         <h3>Pregunta de respaldo</h3><p>La respuesta solo la conoces tú y no se mostrará después. Puede ser corta.</p>
-        <input minLength="10" maxLength="160" placeholder="Tu pregunta privada" value={question} onChange={(event) => setQuestion(event.target.value)} required />
+        {account.question && !securityQuestions.includes(account.question) && <p>Tu pregunta anterior sigue funcionando. Elige una de las nuevas opciones si deseas cambiarla.</p>}
+        <select aria-label="Pregunta de respaldo" value={question} onChange={(event) => setQuestion(event.target.value)} required>
+          <option value="">Selecciona una pregunta</option>{securityQuestions.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
         <input type="password" autoComplete="off" minLength="1" maxLength="160" placeholder="Respuesta de seguridad" value={answer} onChange={(event) => setAnswer(event.target.value)} required />
         <button className="primary" disabled={busy}>Guardar pregunta</button>
       </form>
