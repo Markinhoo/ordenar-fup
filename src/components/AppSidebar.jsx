@@ -39,10 +39,9 @@ export default function AppSidebar({ admin, section, hasBatches, page = 'control
         aria-expanded={open} data-tooltip={open ? 'Contraer menú' : 'Expandir menú'}><Icon name={open ? 'close' : 'menu'} /><span className="sidebar-label">Menú</span></button></div>
       <nav aria-label="Secciones">
         {page === 'control' ? <>
-          {admin && item('setup', 'Preparar lote', () => onNavigate('setup'), section === 'setup')}
+          {admin && item('setup', 'Preparar lote y ordenar Excel', () => onNavigate('setup'), section === 'setup')}
           {item('list', 'Listado y avance', () => onNavigate('list'), section === 'list' || section === 'waiting')}
           {admin && hasBatches && item('history', 'Bitácora por QNA', () => onNavigate('history'), section === 'history')}
-          {admin && <a href="/organizar" aria-label="Ordenar Excel" data-tooltip="Ordenar Excel"><Icon name="excel" /><span className="sidebar-label">Ordenar Excel</span></a>}
         </> : <>
           <a href="/" aria-label="Control de documentos" data-tooltip="Control de documentos"><Icon name="list" /><span className="sidebar-label">Control de documentos</span></a>
           <a href="/organizar" className={page === 'organizer' ? 'active' : ''} aria-current={page === 'organizer' ? 'page' : undefined} aria-label="Ordenar Excel" data-tooltip="Ordenar Excel"><Icon name="excel" /><span className="sidebar-label">Ordenar Excel</span></a>

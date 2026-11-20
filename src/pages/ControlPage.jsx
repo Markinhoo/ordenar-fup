@@ -23,7 +23,7 @@ export default function ControlPage() {
   const [users, setUsers] = useState([]);
   const [batches, setBatches] = useState([]);
   const [batch, setBatch] = useState(null);
-  const [section, setSection] = useState('waiting');
+  const [section, setSection] = useState(() => /\/organizar(?:\.html)?$/i.test(location.pathname) ? 'setup' : 'waiting');
   const [notice, setNotice] = useState({ text: '', error: false });
   const [accountView, setAccountView] = useState(null);
   const [scanMode, setScanMode] = useState(null);
@@ -64,6 +64,8 @@ export default function ControlPage() {
         if (!active) return;
         setUsers(directory.users); setBatches(owned);
         const url = new URL(location.href);
+        const requestedSetup = /\/organizar(?:\.html)?$/i.test(url.pathname) || url.searchParams.get('section') === 'setup';
+        if (requestedSetup) { url.pathname = '/'; url.searchParams.delete('section'); history.replaceState(null, '', url); }
         if (url.searchParams.has('invite')) {
           const claim = await rpc('v2_claim_worker', { p_token: url.searchParams.get('invite') });
           url.searchParams.delete('invite'); url.searchParams.set('b', claim.batchId);
@@ -76,7 +78,8 @@ export default function ControlPage() {
           try { await openBatch(id); opened = true; break; }
           catch (error) { if (id === url.searchParams.get('b')) message(error.message, true); }
         }
-        if (!opened) setSection(profile.isAdmin ? 'setup' : 'waiting');
+        if (requestedSetup && profile.isAdmin) setSection('setup');
+        else if (!opened) setSection(profile.isAdmin ? 'setup' : 'waiting');
         if (!profile.recoverySet) { setAccountView('me'); message('Configura tu pregunta de respaldo para recuperar tu acceso.'); }
       } catch (error) {
         if (!active) return;
@@ -130,9 +133,9 @@ export default function ControlPage() {
     setSection('waiting'); setAccountView(null); setScanMode(null); setPhoto(null); message('');
   }
 
-  const title = section === 'setup' ? 'Preparar lote de trabajo' : section === 'waiting' ? 'Verificación de documentos'
+  const title = section === 'setup' ? 'Preparar lote y ordenar Excel' : section === 'waiting' ? 'Verificación de documentos'
     : batch?.isAdmin ? 'Control de la encargada' : 'Escaneo de documentos';
-  const meta = section === 'setup' ? 'Carga el Excel, elige la QNA y selecciona las personas.'
+  const meta = section === 'setup' ? 'Un archivo y una asignación para el lote compartido y el Excel descargable.'
     : section === 'waiting' ? 'Abre tu QR para acceder al listado asignado.'
       : batch ? `${qnaLabel(batch.qna)} · ${batch.fileName} · ${batch.records.length} registros` : '';
 

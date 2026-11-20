@@ -42,11 +42,8 @@ export default function LoginPanel({ onLogin }) {
 
   return <main className="auth-panel"><div className="auth-card login-card">
     <div className="login-logo"><img src="/nomina-seed.png" alt="Revisión de Nómina SEED, Gobierno del Estado de Durango" /></div>
-    <p className="eyebrow">GOBIERNO DEL ESTADO DE DURANGO</p>
-    <h1>{recovery ? 'Recuperar acceso' : 'Iniciar sesión'}</h1>
-    <p className="login-description">{recovery ? 'Responde tu pregunta de respaldo para crear una contraseña nueva.' : invite
-      ? 'Entra con la cuenta que la encargada creó para ti y abre tu listado.'
-      : 'Revisión de nómina y verificación compartida de documentos FUP.'}</p>
+    {recovery && <><h1>Recuperar acceso</h1><p className="login-description">Responde tu pregunta de respaldo para crear una contraseña nueva.</p></>}
+    {invite && !recovery && <p className="login-invite">Entra con la cuenta que la encargada creó para ti.</p>}
     {!recovery ? <><form className="login-form" onSubmit={signIn}>
       <label>Correo electrónico<span className="login-field"><span aria-hidden="true">@</span><input type="email" autoComplete="email" placeholder="tu@correo.com" value={email} onChange={(event) => setEmail(event.target.value)} required /></span></label>
       <label>Contraseña<span className="login-field"><span aria-hidden="true">●</span><input type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Tu contraseña" value={password} onChange={(event) => setPassword(event.target.value)} required /><button className="password-toggle" type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowPassword((value) => !value)}>{showPassword ? 'Ocultar' : 'Mostrar'}</button></span></label>

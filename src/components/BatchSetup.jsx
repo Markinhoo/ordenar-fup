@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
 import { initialQna, qnaCode, distribute } from '../lib/qna';
 import { parseRosterExcel } from '../lib/rosterExcel';
+import { readBook, generateBook, colorFor } from '../lib/excelBook';
+import { downloadBlob } from '../lib/download';
 
 export default function BatchSetup({ users, onCreate, onMessage, hidden }) {
   const [fileName, setFileName] = useState('');
   const [records, setRecords] = useState([]);
+  const [book, setBook] = useState(null);
   const [count, setCount] = useState(2);
   const [selected, setSelected] = useState([]);
   const [qna, setQna] = useState(initialQna);
@@ -18,11 +21,14 @@ export default function BatchSetup({ users, onCreate, onMessage, hidden }) {
       onMessage('Elige un Excel .xlsx de hasta 30 MB.', true); return;
     }
     try {
-      const next = parseRosterExcel(new Uint8Array(await file.arrayBuffer()));
-      setRecords(next); setFileName(file.name);
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const next = parseRosterExcel(bytes);
+      const nextBook = readBook(bytes);
+      if (next.length !== nextBook.sheet.slots.length) throw new Error('El conteo de registros no coincide entre el listado y el Excel. Revisa el archivo.');
+      setRecords(next); setBook(nextBook); setFileName(file.name);
       setCount((current) => Math.min(current, next.length));
-      onMessage('Archivo leído. El reparto se calculó automáticamente.');
-    } catch (error) { setRecords([]); setFileName(''); onMessage(error.message, true); }
+      onMessage('Archivo leído. El reparto y el Excel ordenado están listos para preparar.');
+    } catch (error) { setRecords([]); setBook(null); setFileName(''); onMessage(error.message, true); }
   }
 
   async function create() {
@@ -39,6 +45,18 @@ export default function BatchSetup({ users, onCreate, onMessage, hidden }) {
     finally { setBusy(false); }
   }
 
+  function download() {
+    if (!book || !unique || busy) return;
+    try {
+      const names = selected.slice(0, count).map((id) => users.find((user) => user.id === id)?.name);
+      if (names.some((name) => !name)) throw new Error('Selecciona una cuenta distinta para cada persona.');
+      const bytes = generateBook(book, names);
+      downloadBlob(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+        `${fileName.replace(/\.xlsx$/i, '')}_ordenado.xlsx`);
+      onMessage('Excel ordenado y repartido descargado. Los folios conservan su RFC.');
+    } catch (error) { onMessage(`No se pudo generar el Excel: ${error.message}`, true); }
+  }
+
   return <section className="section setup-section" hidden={hidden}>
     <div className="setup-card">
       <h2>1. Carga el archivo general</h2>
@@ -50,18 +68,20 @@ export default function BatchSetup({ users, onCreate, onMessage, hidden }) {
       </div><p>QNA del lote: <strong id="qnaCode">{qnaCode(qna.month, qna.half) || '—'}</strong></p>
     </div>
     <div className="setup-card">
-      <h2>2. Reparto automático por persona</h2>
+      <h2>2. Reparte el lote y ordena el Excel</h2>
       <p>Elige cuántas personas trabajarán y selecciona sus nombres. El sistema reparte todos los registros del Excel en orden alfabético por RFC.</p>
       <label className="count-label">Personas <input type="number" min="1" max={Math.min(50, records.length || 50)} value={count}
         onChange={(event) => setCount(Math.max(1, Math.min(50, records.length || 50, Number(event.target.value) || 1)))} /></label>
       <div className="worker-rows">{sizes.map((size, index) => <div className="worker-row" key={index}>
+        <span className="worker-swatch" style={{ backgroundColor: colorFor(index) }} aria-hidden="true" />
         <select aria-label={`Persona ${index + 1}`} value={selected[index] || ''} onChange={(event) => setSelected((current) => { const next = [...current]; next[index] = event.target.value; return next; })}>
           <option value="">Persona {index + 1}: selecciona usuario</option>
           {users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
         </select><output className="worker-target" aria-label={`Registros para persona ${index + 1}`}>{size}</output>
       </div>)}</div>
       <p className="allocation-notice">{records.length ? `${records.length} registros digitales repartidos entre ${count} ${count === 1 ? 'persona' : 'personas'}. ${unique ? 'Todos tienen responsable.' : 'Selecciona una cuenta distinta para cada persona.'}` : 'Carga el Excel para calcular el reparto.'}</p>
-      <button className="primary" type="button" onClick={create} disabled={!records.length || !unique || busy}>Crear lote y códigos QR</button>
+      <div className="setup-actions"><button className="primary" type="button" onClick={create} disabled={!records.length || !unique || busy}>Crear lote y códigos QR</button>
+        <button type="button" onClick={download} disabled={!book || !unique || busy}>Descargar Excel ordenado</button></div>
       <p>Si falta alguien, crea su cuenta en <strong>Usuarios</strong> y después selecciónala aquí.</p>
     </div>
   </section>;
