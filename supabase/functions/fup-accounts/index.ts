@@ -54,8 +54,8 @@ async function accountByUsername(username) {
   return rows?.[0] || null;
 }
 
-function cleanUsername(value) { return String(value || '').trim().toLowerCase(); }
-function validUsername(value) { return /^[a-z][a-z0-9._-]{2,31}$/.test(value); }
+function cleanUsername(value) { return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es'); }
+function validUsername(value) { return /^[a-záéíóúüñ][a-z0-9áéíóúüñ._ -]{2,79}$/.test(value); }
 function validPassword(value) { return typeof value === 'string' && value.length >= 8 && value.length <= 128; }
 function normalizedAnswer(value) { return String(value || '').normalize('NFKC').trim().toLocaleLowerCase('es'); }
 function hex(bytes) { return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, '0')).join(''); }
@@ -111,7 +111,7 @@ Deno.serve(async (request) => {
 
     if (input.action === 'recover') {
       const username = cleanUsername(input.username);
-      if (!validUsername(username) || normalizedAnswer(input.answer).length < 8 || !validPassword(input.password))
+      if (!validUsername(username) || !normalizedAnswer(input.answer).length || !validPassword(input.password))
         return reply({ error: 'Completa usuario, respuesta y contraseña de al menos 8 caracteres' }, 400, origin);
       const account = await accountByUsername(username);
       const attempt = await supabase('/rest/v1/rpc/v3_take_recovery_attempt', 'POST',
@@ -130,7 +130,7 @@ Deno.serve(async (request) => {
       const question = String(input.question || '').trim();
       const answer = normalizedAnswer(input.answer);
       if (!/^[a-f0-9]{64}$/.test(token) || !validPassword(input.password) ||
-          question.length < 10 || question.length > 160 || answer.length < 8 || answer.length > 160)
+          question.length < 10 || question.length > 160 || !answer.length || answer.length > 160)
         return reply({ error: 'Completa el enlace, contraseña y pregunta de respaldo' }, 400, origin);
       const userId = await supabase('/rest/v1/rpc/v4_consume_admin_activation', 'POST',
         { p_token: token }, secretKey, 'fup-sep');
@@ -164,8 +164,8 @@ Deno.serve(async (request) => {
     if (input.action === 'set-recovery') {
       const question = String(input.question || '').trim();
       const answer = normalizedAnswer(input.answer);
-      if (question.length < 10 || question.length > 160 || answer.length < 8 || answer.length > 160)
-        return reply({ error: 'Pregunta de 10 a 160 caracteres y respuesta de 8 a 160' }, 400, origin);
+      if (question.length < 10 || question.length > 160 || !answer.length || answer.length > 160)
+        return reply({ error: 'Pregunta de 10 a 160 caracteres y respuesta de 1 a 160' }, 400, origin);
       const salt = crypto.randomUUID();
       await supabase(`/rest/v1/v3_accounts?user_id=eq.${encodeURIComponent(user.id)}`, 'PATCH',
         { recovery_question: question, recovery_salt: salt, recovery_hash: await answerHash(answer, salt),
@@ -196,16 +196,18 @@ Deno.serve(async (request) => {
 
     if (input.action === 'create-user') {
       const username = cleanUsername(input.username);
-      const name = String(input.name || username).trim();
+      const name = String(input.name || input.username || username).trim();
       const role = String(input.role || 'operador');
       const question = String(input.question || '').trim();
       const answer = normalizedAnswer(input.answer);
-      if (!validUsername(username) || name.length < 2 || name.length > 80 ||
-        !validPassword(input.password) || !['administrador', 'operador'].includes(role) ||
-        question.length < 10 || question.length > 160 || answer.length < 8 || answer.length > 160)
-        return reply({ error: 'Completa usuario, nombre, rol, contraseña y pregunta de respaldo válidos' }, 400, origin);
+      if (!validUsername(username)) return reply({ error: 'El usuario debe tener 3 a 80 caracteres: letras, números, espacios, punto, guion o guion bajo.' }, 400, origin);
+      if (name.length < 2 || name.length > 80) return reply({ error: 'El nombre para el listado debe tener entre 2 y 80 caracteres.' }, 400, origin);
+      if (!validPassword(input.password)) return reply({ error: 'La contraseña debe tener entre 8 y 128 caracteres.' }, 400, origin);
+      if (!['administrador', 'operador'].includes(role)) return reply({ error: 'Selecciona un rol válido.' }, 400, origin);
+      if (question.length < 10 || question.length > 160) return reply({ error: 'La pregunta debe tener entre 10 y 160 caracteres.' }, 400, origin);
+      if (!answer.length || answer.length > 160) return reply({ error: 'Escribe una respuesta de seguridad de hasta 160 caracteres.' }, 400, origin);
       if (await accountByUsername(username)) return reply({ error: 'Ese nombre de usuario ya existe' }, 409, origin);
-      const email = `${username}@users.ordenar-fup.invalid`;
+      const email = `${crypto.randomUUID()}@users.ordenar-fup.invalid`;
       const salt = crypto.randomUUID();
       const created = await supabase('/auth/v1/admin/users', 'POST',
         { email, password: input.password, email_confirm: true, user_metadata: { name, username } });
@@ -247,6 +249,15 @@ Deno.serve(async (request) => {
       if (!target || !validPassword(input.password) || target.user_id === user.id)
         return reply({ error: 'Elige otra cuenta y una contraseña de al menos 8 caracteres' }, 400, origin);
       await supabase(`/auth/v1/admin/users/${target.user_id}`, 'PUT', { password: input.password });
+      return reply({ ok: true }, 200, origin);
+    }
+    if (input.action === 'delete-user') {
+      const target = await accountByUser(String(input.userId || ''));
+      if (!target || target.user_id === user.id)
+        return reply({ error: 'No puedes eliminar tu propia cuenta.' }, 400, origin);
+      await supabase('/rest/v1/rpc/v8_transfer_batches', 'POST',
+        { p_from: target.user_id, p_to: user.id }, secretKey, 'fup-sep');
+      await supabase(`/auth/v1/admin/users/${target.user_id}`, 'DELETE');
       return reply({ ok: true }, 200, origin);
     }
     return reply({ error: 'Acción no reconocida' }, 400, origin);

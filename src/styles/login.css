@@ -135,3 +135,33 @@ body,:root[data-theme='dark'] body{background:var(--fup-wallpaper) center/cover 
 .account-card .user-edit input{flex:1 1 170px;min-width:0}
 .account-card .user-edit button{flex:0 0 auto}
 @media(max-width:600px){.account-card .user-summary{flex-wrap:wrap}.account-card .user-summary>span{flex-basis:100%}.account-card .user-summary select{flex:1;max-width:none}}
+
+/* Full-width user administration inside the signed-in workspace. */
+.users-page{display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr);gap:14px;color:var(--fup-text)}
+.users-page .panel{min-width:0;background:var(--fup-card);border-color:var(--fup-line);color:var(--fup-text)}
+.users-page .panel h2{font-size:20px;margin-bottom:5px}
+.users-page .panel p{font-size:13px;color:var(--fup-muted)}
+.users-create-panel{overflow:auto;scrollbar-width:thin}
+.users-create-panel .stack-form{gap:12px}
+.users-page .stack-form label{font-size:13px;color:var(--fup-text)}
+.users-page .stack-form input,.users-page .stack-form select,.users-directory-heading input,.users-table select,.users-edit-form input{min-height:41px;border:1px solid var(--fup-line);background:var(--fup-field);color:var(--fup-text);border-radius:9px;padding:9px 11px;font-size:14px}
+.users-page .stack-form .primary{min-height:43px;font-size:14px}
+.users-directory-panel{display:flex;flex-direction:column;overflow:hidden}
+.users-directory-heading{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.users-directory-heading input{width:min(260px,40%)}
+.users-directory-scroll{flex:1;min-height:0;overflow:auto;border:1px solid var(--fup-line);border-radius:10px;scrollbar-width:thin}
+.users-table{font-size:13px}
+.users-table th{background:var(--fup-field);color:var(--fup-text);font-size:12px}
+.users-table td{border-bottom-color:var(--fup-line);color:var(--fup-text)}
+.users-table td strong{font-size:14px;color:var(--fup-text)}
+.users-table td small{font-size:12px;color:var(--fup-muted)}
+.users-table td:nth-child(3){white-space:nowrap}
+.users-table select{width:145px;max-width:100%;min-height:34px;padding:5px 8px;font-size:12px}
+.users-actions{display:flex;flex-wrap:wrap;gap:6px}
+.users-actions button,.users-edit-form button:not(.primary){border:1px solid var(--fup-line);border-radius:7px;background:var(--fup-field);color:var(--fup-text);padding:7px 9px;font-size:12px;font-weight:700}
+.users-actions button.danger{color:#a23d3d;border-color:#a23d3d66}
+.users-edit-form{flex:none;margin-top:10px;padding:13px;border:1px solid var(--fup-line);border-radius:10px;background:var(--fup-field)}
+.users-edit-form h3{margin:0;font-size:15px}
+.users-edit-form>div{display:flex;gap:8px}
+@media(max-width:880px){.users-page{grid-template-columns:1fr;grid-template-rows:minmax(0,.8fr) minmax(0,1.2fr)}.users-create-panel .stack-form{grid-template-columns:repeat(2,minmax(0,1fr))}.users-create-panel .stack-form button{grid-column:1/-1}}
+@media(max-width:560px){.users-page{gap:8px}.users-page .panel{padding:11px}.users-create-panel .stack-form{grid-template-columns:1fr;gap:8px}.users-directory-heading{align-items:stretch;flex-direction:column;gap:4px}.users-directory-heading input{width:100%}.users-table{min-width:520px}}

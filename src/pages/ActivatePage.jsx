@@ -36,7 +36,7 @@ export default function ActivatePage() {
     {valid && !done && <form onSubmit={activate}>
       <label>Contraseña<input type="password" autoComplete="new-password" minLength="8" maxLength="128" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
       <label>Pregunta de respaldo<input minLength="10" maxLength="160" placeholder="Una pregunta que solo tú sepas responder" value={question} onChange={(event) => setQuestion(event.target.value)} required /></label>
-      <label>Respuesta de respaldo<input type="password" autoComplete="off" minLength="8" maxLength="160" value={answer} onChange={(event) => setAnswer(event.target.value)} required /></label>
+      <label>Respuesta de respaldo<input type="password" autoComplete="off" minLength="1" maxLength="160" value={answer} onChange={(event) => setAnswer(event.target.value)} required /></label>
       <button disabled={busy}>Activar mi cuenta</button>
     </form>}
     <p className={done ? 'ok' : 'error'} role="status">{valid ? message : 'Enlace de activación inválido. Solicita uno nuevo a la persona encargada.'}</p>

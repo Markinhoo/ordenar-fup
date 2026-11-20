@@ -53,7 +53,7 @@ export default function LoginPanel({ onLogin }) {
         <label>Nombre de usuario<span className="login-field"><input autoComplete="username" value={recoveryUsername} onChange={(event) => setRecoveryUsername(event.target.value)} required /></span></label>
         <button type="button" onClick={loadQuestion} disabled={busy}>Ver pregunta de respaldo</button>
         {question && <p className="recovery-question">{question}</p>}
-        <label>Respuesta de respaldo<span className="login-field"><input type="password" autoComplete="off" minLength="8" value={answer} onChange={(event) => setAnswer(event.target.value)} required /></span></label>
+        <label>Respuesta de respaldo<span className="login-field"><input type="password" autoComplete="off" minLength="1" value={answer} onChange={(event) => setAnswer(event.target.value)} required /></span></label>
         <label>Nueva contraseña<span className="login-field"><input type="password" autoComplete="new-password" minLength="8" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></span></label>
         <button className="primary" disabled={busy}>Restablecer contraseña</button>
         <button type="button" className="text-button" onClick={() => { setRecovery(false); setMessage(''); }}>Volver al acceso</button>

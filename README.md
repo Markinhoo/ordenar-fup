@@ -48,3 +48,7 @@ Abre la dirección local que muestre Vite (normalmente `http://127.0.0.1:5173`).
 El generador QR usa la dependencia [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator).
 
 El proyecto `ordenar-fup` en Vercel está conectado a la rama `main` de `Markinhoo/ordenar-fup`. Los cambios enviados a esa rama generan despliegues automáticos.
+
+## Administración de cuentas
+
+`supabase/fup-sep-v8.sql` se aplica después de `v7`. Permite nombres de usuario con espacios y protege a la última cuenta administradora contra eliminación. **Administrar usuarios** es una página completa para buscar, editar, cambiar roles y eliminar cuentas. La respuesta de seguridad puede ser corta. Los movimientos de cuentas eliminadas permanecen en la bitácora; sus lotes administrativos pasan al administrador que las elimina.

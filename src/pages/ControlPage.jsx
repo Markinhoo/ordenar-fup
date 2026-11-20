@@ -5,6 +5,7 @@ import { useTheme } from '../lib/theme';
 import ThemeToggle from '../components/ThemeToggle';
 import LoginPanel from '../components/LoginPanel';
 import AccountModal from '../components/AccountModal';
+import UsersPage from '../components/UsersPage';
 import BatchSetup from '../components/BatchSetup';
 import BatchList from '../components/BatchList';
 import HistoryView from '../components/HistoryView';
@@ -144,9 +145,9 @@ export default function ControlPage() {
     setSection('waiting'); setAccountView(null); setScanMode(null); setPhoto(null); message('');
   }
 
-  const title = section === 'setup' ? 'Preparar lote y ordenar Excel' : section === 'waiting' ? 'Verificación de documentos'
+  const title = section === 'users' ? 'Administrar usuarios' : section === 'setup' ? 'Preparar lote y ordenar Excel' : section === 'waiting' ? 'Verificación de documentos'
     : batch?.isAdmin ? 'Control de la encargada' : 'Escaneo de documentos';
-  const meta = section === 'setup' ? 'Un archivo y una asignación para el lote compartido y el Excel descargable.'
+  const meta = section === 'users' ? 'Crea cuentas, cambia roles y administra los accesos del equipo.' : section === 'setup' ? 'Un archivo y una asignación para el lote compartido y el Excel descargable.'
     : section === 'waiting' ? 'La encargada aún no te asigna un lote. Cuando lo haga aparecerá aquí.'
       : batch ? `${qnaLabel(batch.qna)} · ${batch.fileName} · ${batch.records.length} registros` : '';
 
@@ -158,16 +159,17 @@ export default function ControlPage() {
         <button type="button" className={section === 'list' || section === 'waiting' ? 'active' : ''} aria-current={section === 'list' || section === 'waiting' ? 'page' : undefined}
           onClick={() => setSection(batch ? 'list' : isAdmin ? 'setup' : 'waiting')}><span className="nav-long">Listado y avance</span><span className="nav-short">Listado</span></button>
         {isAdmin && batches.length > 0 && <button type="button" className={section === 'history' ? 'active' : ''} aria-current={section === 'history' ? 'page' : undefined} onClick={() => setSection('history')}><span className="nav-long">Bitácora por QNA</span><span className="nav-short">Bitácora</span></button>}
+        {isAdmin && <button type="button" className={section === 'users' ? 'active' : ''} aria-current={section === 'users' ? 'page' : undefined} onClick={() => { setSection('users'); loadUsers(); }}>Usuarios</button>}
       </nav>}
       <div className="header-right"><ThemeToggle theme={theme} onToggle={toggleTheme} />
         {session && account && <ProfileMenu account={account} isAdmin={isAdmin}
           onAccount={() => setAccountView('me')}
-          onUsers={() => { setAccountView('users'); loadUsers(); }} onLogout={signOut} />}
+          onUsers={() => { setSection('users'); loadUsers(); }} onLogout={signOut} />}
       </div>
     </header>
     {!session ? <LoginPanel onLogin={setSession} /> : loading ? <BrandedLoader /> : !account ? <main className="auth-panel"><div className="auth-card"><p role="status">No se pudo abrir tu cuenta.</p><p className="message error">{notice.text}</p><button type="button" onClick={signOut}>Salir e intentar de nuevo</button></div></main> : <main className="app-panel">
       <div className="app-top"><div><p className="eyebrow">VERIFICACIÓN FUP</p><h1>{title}</h1><p>{meta}</p></div>
-        <div className="top-actions">
+        <div className="top-actions" hidden={section === 'users'}>
           {batches.length > 0 && <><select aria-label="Elegir lote" value={batch?.id || ''} onChange={(event) => openBatch(event.target.value).catch((error) => message(error.message, true))}>
             {batches.map((item) => <option key={item.id} value={item.id}>{qnaLabel(item.qna)} · {item.fileName}</option>)}
           </select>{isAdmin && <button type="button" onClick={() => setSection('setup')}>Nuevo lote</button>}</>}
@@ -175,14 +177,14 @@ export default function ControlPage() {
       </div>
       <p className={`message${notice.error ? ' error' : ''}`} role="status" aria-live="polite">{notice.text}</p>
       {isAdmin && <BatchSetup users={users} hidden={section !== 'setup'} onCreate={createBatch} onMessage={message} />}
+      {isAdmin && <UsersPage account={account} users={users} hidden={section !== 'users'} onUsersChanged={loadUsers} onAccountChanged={setAccount} />}
       <section className="section waiting-section" hidden={section !== 'waiting'}><div className="panel waiting-card"><h2>Listo para verificar</h2><p>Iniciaste sesión. Cuando la encargada te asigne un lote, aparecerá aquí automáticamente con tu QR y el escáner.</p></div></section>
       {batch && <><BatchList batch={batch} hidden={section !== 'list'} onMessage={message} onRefresh={refreshBatch}
         onOpenScanner={() => setScanMode('camera')} onPhoto={(file) => { if (file) { setPhoto(file); setScanMode('photo'); } }} />
         {isAdmin && <HistoryView batch={batch} batches={batches} hidden={section !== 'history'} version={historyVersion} onMessage={message} />}
       </>}
     </main>}
-    {account && <AccountModal account={account} users={users} view={accountView} onClose={() => setAccountView(null)}
-      onUsersChanged={loadUsers} onAccountChanged={setAccount} />}
+    {account && <AccountModal account={account} view={accountView} onClose={() => setAccountView(null)} onAccountChanged={setAccount} />}
     {batch && !batch.isAdmin && <ScanModal batch={batch} mode={scanMode} photo={photo}
       onClose={() => { setScanMode(null); setPhoto(null); }} onRefresh={refreshBatch} onMessage={message} />}
   </div>;
