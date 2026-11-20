@@ -4,6 +4,8 @@ import { getDocumentWorker, parseScanText } from '../lib/ocr';
 
 export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMessage }) {
   const videoRef = useRef(null);
+  const guideRef = useRef(null);
+  const modalRef = useRef(null);
   const streamRef = useRef(null);
   const [result, setResult] = useState(null);
   const [reading, setReading] = useState(false);
@@ -16,7 +18,7 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
     async function start() {
       if (!navigator.mediaDevices?.getUserMedia) { onMessage('Este navegador no permite cámara en vivo. Usa «Tomar foto del recuadro».', true); onClose(); return; }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
         if (!active) { stream.getTracks().forEach((track) => track.stop()); return; }
         streamRef.current = stream;
         videoRef.current.srcObject = stream;
@@ -35,6 +37,28 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
 
   useEffect(() => { if (mode === 'photo' && photo) readImage(photo); }, [mode, photo]);
   useEffect(() => { setResult(null); }, [mode, photo]);
+  useEffect(() => () => {
+    if (document.fullscreenElement === modalRef.current) {
+      screen.orientation?.unlock?.();
+      document.exitFullscreen?.().catch(() => {});
+    }
+  }, []);
+
+  async function expandCamera() {
+    if (!modalRef.current?.requestFullscreen) {
+      setStatus('Gira el celular a horizontal. Si el giro está bloqueado, actívalo en los ajustes del teléfono.');
+      return;
+    }
+    try {
+      await modalRef.current.requestFullscreen();
+      if (screen.orientation?.lock) {
+        await screen.orientation.lock('landscape');
+        setStatus('Coloca las tres filas dentro de la guía y pulsa Leer recuadro.');
+      } else setStatus('Gira el celular a horizontal para ampliar la cámara.');
+    } catch {
+      setStatus('Gira el celular a horizontal. Si el giro está bloqueado, actívalo en los ajustes del teléfono.');
+    }
+  }
 
   async function readImage(image) {
     if (reading || !batch || batch.isAdmin) return;
@@ -55,12 +79,26 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
 
   function capture() {
     const video = videoRef.current;
-    if (!video?.videoWidth) { setStatus('Espera a que aparezca la imagen.'); return; }
-    const width = video.videoWidth * .84;
-    const height = Math.min(video.videoHeight * .45, width / 3.4);
+    const guide = guideRef.current;
+    if (!video?.videoWidth || !guide) { setStatus('Espera a que aparezca la imagen.'); return; }
+    const frame = video.getBoundingClientRect();
+    const target = guide.getBoundingClientRect();
+    const scale = Math.max(frame.width / video.videoWidth, frame.height / video.videoHeight);
+    const drawnWidth = video.videoWidth * scale;
+    const drawnHeight = video.videoHeight * scale;
+    const offsetX = (frame.width - drawnWidth) / 2;
+    const offsetY = (frame.height - drawnHeight) / 2;
+    const padX = target.width * .02;
+    const padY = target.height * .06;
+    const left = Math.max(0, (target.left - frame.left - offsetX - padX) / scale);
+    const top = Math.max(0, (target.top - frame.top - offsetY - padY) / scale);
+    const right = Math.min(video.videoWidth, (target.right - frame.left - offsetX + padX) / scale);
+    const bottom = Math.min(video.videoHeight, (target.bottom - frame.top - offsetY + padY) / scale);
+    const width = right - left;
+    const height = bottom - top;
+    if (width < 1 || height < 1) { setStatus('No se pudo encuadrar el documento. Gira el celular e intenta de nuevo.'); return; }
     const canvas = document.createElement('canvas'); canvas.width = Math.round(width * 2); canvas.height = Math.round(height * 2);
-    canvas.getContext('2d').drawImage(video, (video.videoWidth - width) / 2, (video.videoHeight - height) / 2,
-      width, height, 0, 0, canvas.width, canvas.height);
+    canvas.getContext('2d').drawImage(video, left, top, width, height, 0, 0, canvas.width, canvas.height);
     readImage(canvas);
   }
 
@@ -80,9 +118,9 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
   }
 
   if (!mode) return null;
-  return <div className="scan-modal" role="dialog" aria-modal="true" aria-label="Escanear recuadro del documento" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <div className="scan-card"><div className="scan-heading"><strong>Escanear recuadro completo</strong><button type="button" aria-label="Cerrar" onClick={onClose}>×</button></div>
-      {mode === 'camera' && <div className="video-wrap"><video ref={videoRef} autoPlay playsInline muted /><div className="scan-guide">PROCEDENCIA · NIVEL · No. DE DOCUMENTO · FECHA</div></div>}
+  return <div ref={modalRef} className="scan-modal" role="dialog" aria-modal="true" aria-label="Escanear recuadro del documento" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className={`scan-card${result ? ' has-result' : ''}`}><div className="scan-heading"><strong>Escanear recuadro completo</strong><button type="button" aria-label="Cerrar" onClick={onClose}>×</button></div>
+      {mode === 'camera' && <><div className="scan-orientation"><span>Gira el celular a horizontal para ampliar el recuadro.</span><button type="button" onClick={expandCamera}>Pantalla completa horizontal</button></div><div className="video-wrap"><video ref={videoRef} autoPlay playsInline muted /><div ref={guideRef} className="scan-guide" aria-label="Guía para las tres filas del recuadro" /></div></>}
       <p role="status">{status}</p>
       {mode === 'camera' && <button className="primary" type="button" onClick={capture} disabled={reading || saving}>Leer recuadro</button>}
       {result && <div id="scanResult"><dl>
