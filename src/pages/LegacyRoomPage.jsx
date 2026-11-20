@@ -7,9 +7,11 @@ import { drawQr, downloadQr } from '../lib/qr';
 import { useTheme } from '../lib/theme';
 import ThemeToggle from '../components/ThemeToggle';
 import AppSidebar from '../components/AppSidebar';
+import Brand from '../components/Brand';
 import '../styles/organizer.css';
 import '../styles/organizer-react.css';
 import '../styles/legacy-room.css';
+import '../styles/login.css';
 
 const lastRoomKey = 'ordenar-fup:last-team-room';
 const validSecret = (value) => /^[0-9a-f]{64}$/.test(value || '');
@@ -158,7 +160,7 @@ export default function LegacyRoomPage() {
 
   return <main className="shell legacy-shell organizer-with-sidebar">
     <AppSidebar page="legacy" admin onLogout={async () => { await logout(); location.replace('/'); }} />
-    <header className="topbar"><div className="brand"><span className="brand-mark">↧</span><span>ORDENAR <b>FUP</b></span></div>
+    <header className="topbar"><Brand />
       <div className="organizer-header-actions"><ThemeToggle theme={theme} onToggle={toggleTheme} /><a href="/">Control actual</a></div></header>
     <section className="hero"><div className="eyebrow">SALA ANTERIOR</div><h1>Verifica cada folio.</h1><p>Las marcas de esta sala se sincronizan entre dispositivos.</p></section>
     <section className="verify-view">

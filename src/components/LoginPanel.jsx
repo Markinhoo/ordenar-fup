@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { accounts, login } from '../lib/api';
+import BrandedLoader from './BrandedLoader';
 
 export default function LoginPanel({ onLogin }) {
   const [recovery, setRecovery] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
@@ -38,25 +40,27 @@ export default function LoginPanel({ onLogin }) {
     finally { setBusy(false); }
   }
 
-  return <main className="auth-panel"><div className="auth-card">
-    <p className="eyebrow">CONTROL COMPARTIDO</p>
-    <h1>Inicia sesión en Ordenar FUP</h1>
-    <p>{invite ? 'Este QR está asignado a una cuenta. Entra con la cuenta que creó la encargada para ti.'
-      : 'La cuenta administradora crea usuarios y carga el Excel; el equipo verifica los documentos.'}</p>
-    {!recovery ? <><form onSubmit={signIn}>
-      <label>Correo electrónico<input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
-      <label>Contraseña<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+  return <main className="auth-panel"><div className="auth-card login-card">
+    <div className="login-logo"><img src="/nomina-seed.png" alt="Revisión de Nómina SEED, Gobierno del Estado de Durango" /></div>
+    <p className="eyebrow">GOBIERNO DEL ESTADO DE DURANGO</p>
+    <h1>{recovery ? 'Recuperar acceso' : 'Iniciar sesión'}</h1>
+    <p className="login-description">{recovery ? 'Responde tu pregunta de respaldo para crear una contraseña nueva.' : invite
+      ? 'Entra con la cuenta que la encargada creó para ti y abre tu listado.'
+      : 'Revisión de nómina y verificación compartida de documentos FUP.'}</p>
+    {!recovery ? <><form className="login-form" onSubmit={signIn}>
+      <label>Correo electrónico<span className="login-field"><span aria-hidden="true">@</span><input type="email" autoComplete="email" placeholder="tu@correo.com" value={email} onChange={(event) => setEmail(event.target.value)} required /></span></label>
+      <label>Contraseña<span className="login-field"><span aria-hidden="true">●</span><input type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Tu contraseña" value={password} onChange={(event) => setPassword(event.target.value)} required /><button className="password-toggle" type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowPassword((value) => !value)}>{showPassword ? 'Ocultar' : 'Mostrar'}</button></span></label>
       <button className="primary" disabled={busy}>Entrar</button>
     </form><button className="text-button" type="button" onClick={() => { setRecovery(true); setRecoveryEmail(email); setMessage(''); }}>Olvidé mi contraseña</button></>
-      : <form className="stack-form" onSubmit={recover}>
-        <label>Correo de tu cuenta<input type="email" autoComplete="email" value={recoveryEmail} onChange={(event) => setRecoveryEmail(event.target.value)} required /></label>
+      : <form className="login-form" onSubmit={recover}>
+        <label>Correo de tu cuenta<span className="login-field"><input type="email" autoComplete="email" value={recoveryEmail} onChange={(event) => setRecoveryEmail(event.target.value)} required /></span></label>
         <button type="button" onClick={loadQuestion} disabled={busy}>Ver pregunta de respaldo</button>
-        <p>{question}</p>
-        <label>Respuesta de respaldo<input type="password" autoComplete="off" minLength="8" value={answer} onChange={(event) => setAnswer(event.target.value)} required /></label>
-        <label>Nueva contraseña<input type="password" autoComplete="new-password" minLength="8" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
+        {question && <p className="recovery-question">{question}</p>}
+        <label>Respuesta de respaldo<span className="login-field"><input type="password" autoComplete="off" minLength="8" value={answer} onChange={(event) => setAnswer(event.target.value)} required /></span></label>
+        <label>Nueva contraseña<span className="login-field"><input type="password" autoComplete="new-password" minLength="8" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></span></label>
         <button className="primary" disabled={busy}>Restablecer contraseña</button>
         <button type="button" className="text-button" onClick={() => { setRecovery(false); setMessage(''); }}>Volver al acceso</button>
       </form>}
     <p className={`message${message ? ' error' : ''}`} role="status">{message}</p>
-  </div></main>;
+  </div>{busy && <BrandedLoader message={recovery ? 'Procesando solicitud…' : 'Iniciando sesión…'} />}</main>;
 }

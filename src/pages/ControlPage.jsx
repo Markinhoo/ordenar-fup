@@ -10,7 +10,11 @@ import BatchSetup from '../components/BatchSetup';
 import BatchList from '../components/BatchList';
 import HistoryView from '../components/HistoryView';
 import ScanModal from '../components/ScanModal';
+import Brand from '../components/Brand';
+import ProfileMenu from '../components/ProfileMenu';
+import BrandedLoader from '../components/BrandedLoader';
 import '../styles/control.css';
+import '../styles/login.css';
 
 export default function ControlPage() {
   const [theme, toggleTheme] = useTheme();
@@ -132,19 +136,19 @@ export default function ControlPage() {
     : section === 'waiting' ? 'Abre tu QR para acceder al listado asignado.'
       : batch ? `${qnaLabel(batch.qna)} · ${batch.fileName} · ${batch.records.length} registros` : '';
 
-  return <div className={`control-shell${session && account ? ' has-sidebar' : ''}`}>
+  return <div className={`control-shell${session && account ? ' has-sidebar' : ''}${!session ? ' is-auth' : ''}`}>
     <header className="control-header">
-      <a className="control-brand" href="/"><span>↧</span><strong>ORDENAR FUP</strong></a>
+      <Brand />
       <div className="header-right"><ThemeToggle theme={theme} onToggle={toggleTheme} />
-        {session && account && <>
-          <span>{session.email}</span>
-        </>}
+        {session && account && <ProfileMenu account={account} email={session.email} isAdmin={isAdmin}
+          onAccount={() => setAccountView('me')}
+          onUsers={() => { setAccountView('users'); loadUsers(); }} onLogout={signOut} />}
       </div>
     </header>
     {session && account && <AppSidebar admin={isAdmin} section={section} hasBatches={batches.length > 0}
       onNavigate={(next) => setSection(next === 'list' && !batch ? isAdmin ? 'setup' : 'waiting' : next)}
       onUsers={() => { setAccountView('users'); loadUsers(); }} onAccount={() => setAccountView('me')} onLogout={signOut} />}
-    {!session ? <LoginPanel onLogin={setSession} /> : loading || !account ? <main className="auth-panel"><div className="auth-card"><p role="status">{loading ? 'Cargando tu cuenta…' : 'No se pudo abrir tu cuenta.'}</p>{!loading && <><p className="message error">{notice.text}</p><button type="button" onClick={signOut}>Salir e intentar de nuevo</button></>}</div></main> : <main className="app-panel">
+    {!session ? <LoginPanel onLogin={setSession} /> : loading ? <BrandedLoader /> : !account ? <main className="auth-panel"><div className="auth-card"><p role="status">No se pudo abrir tu cuenta.</p><p className="message error">{notice.text}</p><button type="button" onClick={signOut}>Salir e intentar de nuevo</button></div></main> : <main className="app-panel">
       <div className="app-top"><div><p className="eyebrow">VERIFICACIÓN FUP</p><h1>{title}</h1><p>{meta}</p></div>
         <div className="top-actions">
           {isAdmin && batches.length > 0 && <><select aria-label="Elegir lote" value={batch?.id || ''} onChange={(event) => openBatch(event.target.value).catch((error) => message(error.message, true))}>

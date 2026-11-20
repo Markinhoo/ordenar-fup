@@ -6,8 +6,10 @@ import { downloadBlob } from '../lib/download';
 import { useTheme } from '../lib/theme';
 import ThemeToggle from '../components/ThemeToggle';
 import AppSidebar from '../components/AppSidebar';
+import Brand from '../components/Brand';
 import '../styles/organizer.css';
 import '../styles/organizer-react.css';
+import '../styles/login.css';
 
 export default function OrganizerPage() {
   const [theme, toggleTheme] = useTheme();
@@ -64,7 +66,7 @@ export default function OrganizerPage() {
 
   return <main className="shell organizer-with-sidebar">
     <AppSidebar page="organizer" admin onLogout={async () => { await logout(); location.replace('/'); }} />
-    <header className="topbar"><div className="brand"><span className="brand-mark">↧</span><span>ORDENAR <b>FUP</b></span></div>
+    <header className="topbar"><Brand />
       <div className="organizer-header-actions"><span className="private-pill"><span className="private-dot" /> Excel local · control compartido</span><ThemeToggle theme={theme} onToggle={toggleTheme} /></div>
     </header>
     <section className="hero"><div className="eyebrow"><span className="eyebrow-line" /> ORGANIZA TU LISTADO</div>
