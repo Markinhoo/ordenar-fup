@@ -55,7 +55,7 @@ export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenS
           <b>{batch.records.filter((record) => record.assignedWorkerId === worker.id && record.checkedAt).length} / {worker.target}</b></div>)}</div>
       </div>
       {batch.isAdmin ? <>
-        <div className="panel"><h2>QR de cada persona</h2><p>Cada QR abre el lote de la persona asignada. Para entrar se necesita su usuario y contraseña.</p>
+        <div className="panel"><h2>QR de cada persona</h2><p>Cada QR abre el lote en el celular. Se necesita una cuenta asignada al lote; cualquier operador del lote puede ayudar a escanear otros folios.</p>
           <div>{batch.workers.map((worker) => <QrCard key={worker.id} worker={worker} qna={batch.qna} batchId={batch.id} />)}</div></div>
         <div className="panel"><h2>Añadir documento no digital</h2><p>Solo la encargada puede agregarlo. La observación queda en la bitácora.</p>
           <form className="stack-form" onSubmit={addMissing}>
@@ -69,7 +69,7 @@ export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenS
             <button className="primary">Añadir y registrar</button>
           </form>
         </div>
-      </> : <div className="panel"><h2>Tu QR y escáner</h2><p>Abre este QR con el celular para entrar directamente a tu lote. Inicia sesión con tu usuario. Después escanea el recuadro del documento.</p>
+      </> : <div className="panel"><h2>Tu QR y escáner</h2><p>Abre este QR con el celular e inicia sesión con tu usuario. Puedes ayudar a revisar folios asignados a otra persona del mismo lote; tu nombre quedará como responsable del escaneo.</p>
         {batch.workers.filter((worker) => worker.id === batch.myWorkerId).map((worker) =>
           <QrCard key={worker.id} worker={worker} qna={batch.qna} batchId={batch.id} />)}
         <button className="primary" type="button" onClick={onOpenScanner}>Abrir cámara</button>
@@ -90,7 +90,7 @@ export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenS
           <td>{record.checkedAt ? [record.procedencia, record.nivel, record.documentDate].filter(Boolean).join(' · ') || 'Marca manual' : 'Pendiente'}</td>
           <td>{record.checkedBy || '—'}{record.observation && <small>{record.observation}</small>}</td>
         </tr>) : <tr><td colSpan="5" className="empty-row">No hay registros con este filtro.</td></tr>}</tbody>
-      </table></div><small>Las casillas solo las cambia la encargada con una observación. El equipo verifica mediante escaneo.</small>
+      </table></div><small>Cualquier operador asignado al lote puede escanear un folio. La asignación inicial permanece; Responsable muestra a quien hizo el último escaneo.</small>
     </div>
   </section>;
 }

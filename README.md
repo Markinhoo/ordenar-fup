@@ -54,3 +54,9 @@ El proyecto `ordenar-fup` en Vercel está conectado a la rama `main` de `Markinh
 `supabase/fup-sep-v8.sql` se aplica después de `v7`. Permite nombres de usuario con espacios y protege a la última cuenta administradora contra eliminación. **Administrar usuarios** es una página completa para buscar, editar, cambiar roles y eliminar cuentas. La respuesta de seguridad puede ser corta. Los movimientos de cuentas eliminadas permanecen en la bitácora; sus lotes administrativos pasan al administrador que las elimina.
 
 Al crear una cuenta o cambiar la pregunta de respaldo, se elige entre lugar de nacimiento, nombre de mascota y nombre de la primera escuela. Las preguntas personalizadas guardadas antes siguen apareciendo al recuperar una cuenta; al reemplazarlas se debe elegir una de las tres opciones.
+
+## Descarga y ayuda entre operadores
+
+La descarga del Excel alfabetizado tiene una casilla **Con colores**. Sin marcarla, se ordenan RFC y folio sin añadir colores ni la leyenda de distribución, y no hace falta seleccionar operadores. Al marcarla, se pintan los registros por persona y se añade la leyenda al final.
+
+`supabase/fup-sep-v9.sql` permite que un operador ya asignado al lote escanee cualquier folio de ese mismo lote para ayudar a otra persona. La asignación original no cambia. **Responsable** muestra a quien hizo el último escaneo y la bitácora conserva todos los intentos anteriores. Un operador ajeno al lote no puede entrar ni escanearlo.

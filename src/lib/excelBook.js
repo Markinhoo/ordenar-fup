@@ -205,13 +205,22 @@ function stylePainter(zip) {
   return { doc, styled, finalize() { fills.setAttribute('count', String(fills.children.length)); xfs.setAttribute('count', String(xfs.children.length)); } };
 }
 
-export function generateBook(book, names) {
+export function generateBook(book, names = [], { withColors = true } = {}) {
   const zip = { ...book.zip };
   const { path } = book.sheet;
   const { doc, sheetData, slots } = inspectSheet(zip, path, sharedStrings(zip));
-  const styles = stylePainter(zip);
   const sorted = slots.map((slot) => ({ rfc: slot.rfc, folio: slot.folio, rfcCell: slot.rfcCell.cloneNode(true), folioCell: slot.folioCell.cloneNode(true) }))
     .sort((a, b) => a.rfc.localeCompare(b.rfc, 'es', { sensitivity: 'base' }) || a.folio.localeCompare(b.folio, 'es', { numeric: true }));
+  if (withColors && !names.length) throw new Error('Selecciona al menos una persona para pintar el Excel.');
+  const styles = withColors ? stylePainter(zip) : null;
+  if (!withColors) {
+    slots.forEach((slot, i) => {
+      setContent(slot.rfcCell, sorted[i].rfcCell);
+      setContent(slot.folioCell, sorted[i].folioCell);
+    });
+    zip[path] = encoder.encode(new XMLSerializer().serializeToString(doc));
+    return zipSync(zip, { level: 6 });
+  }
   const sizes = distribute(slots.length, names.length);
   let owner = 0, nextBoundary = sizes[0];
   slots.forEach((slot, i) => {

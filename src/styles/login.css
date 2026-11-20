@@ -97,6 +97,11 @@ body,:root[data-theme='dark'] body{background:var(--fup-wallpaper) center/cover 
 .worker-row select{width:100%;min-width:0;min-height:43px;padding:8px 10px;font-size:14px}
 .worker-target{min-height:43px;display:grid;place-items:center;padding:8px 5px;font-size:14px;white-space:nowrap}
 .setup-actions button,.setup-actions button.primary{min-height:40px;font-size:13px}
+.setup-actions .color-download-option{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:6px 10px;border:1px solid var(--fup-line);border-radius:8px;background:var(--fup-card);color:var(--fup-text);font:700 13px 'DM Sans',sans-serif;white-space:nowrap}
+.setup-actions .color-download-option input{width:18px;height:18px;margin:0;accent-color:#555}
+.control-shell .list-section .list-side{grid-auto-rows:max-content;align-content:start;gap:12px;overflow-x:hidden;overflow-y:auto}
+.control-shell .list-section .list-side>.panel{min-height:max-content;align-self:start}
+.control-shell .list-section .worker-qr canvas{display:block}
 .app-top h1{font-size:26px}
 .app-top p:last-child,.message{font-size:13px}
 .top-actions select,.top-actions button{font-size:13px}

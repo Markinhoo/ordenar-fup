@@ -14,6 +14,7 @@ export default function BatchSetup({ users, onCreate, onMessage, hidden }) {
   const [selected, setSelected] = useState([]);
   const [qna, setQna] = useState(initialQna);
   const [busy, setBusy] = useState(false);
+  const [withColors, setWithColors] = useState(false);
   const sizes = useMemo(() => distribute(records.length, count), [records.length, count]);
   const operators = users.filter((user) => user.role === 'operador');
   const unique = selected.slice(0, count).every((id) => operators.some((user) => user.id === id))
@@ -50,14 +51,14 @@ export default function BatchSetup({ users, onCreate, onMessage, hidden }) {
   }
 
   function download() {
-    if (!book || !unique || busy) return;
+    if (!book || (withColors && !unique) || busy) return;
     try {
-      const names = selected.slice(0, count).map((id) => users.find((user) => user.id === id)?.name);
-      if (names.some((name) => !name)) throw new Error('Selecciona una cuenta distinta para cada persona.');
-      const bytes = generateBook(book, names);
+      const names = withColors ? selected.slice(0, count).map((id) => users.find((user) => user.id === id)?.name) : [];
+      if (withColors && names.some((name) => !name)) throw new Error('Selecciona una cuenta distinta para cada persona.');
+      const bytes = generateBook(book, names, { withColors });
       downloadBlob(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-        `${fileName.replace(/\.xlsx$/i, '')}_ordenado.xlsx`);
-      onMessage('Excel ordenado y repartido descargado. Los folios conservan su RFC.');
+        `${fileName.replace(/\.xlsx$/i, '')}_ordenado${withColors ? '_con_colores' : ''}.xlsx`);
+      onMessage(`Excel alfabetizado ${withColors ? 'con colores' : 'sin colores'} descargado. Los folios conservan su RFC.`);
     } catch (error) { onMessage(`No se pudo generar el Excel: ${error.message}`, true); }
   }
 
@@ -86,7 +87,8 @@ export default function BatchSetup({ users, onCreate, onMessage, hidden }) {
       </div>)}</div>
       <p className="allocation-notice">{records.length ? `${records.length} registros digitales repartidos entre ${count} ${count === 1 ? 'persona' : 'personas'}. ${unique ? 'Todos tienen responsable.' : 'Selecciona una cuenta distinta para cada persona.'}` : 'Carga el Excel para calcular el reparto.'}</p>
       <div className="setup-actions"><button className="primary" type="button" onClick={create} disabled={!records.length || !unique || busy}>Crear lote y códigos QR</button>
-        <button type="button" onClick={download} disabled={!book || !unique || busy}>Descargar Excel ordenado</button></div>
+        <label className="color-download-option"><input type="checkbox" checked={withColors} onChange={(event) => setWithColors(event.target.checked)} /> Con colores</label>
+        <button type="button" onClick={download} disabled={!book || (withColors && !unique) || busy}>Descargar Excel ordenado</button></div>
       <p>Si falta alguien, crea su cuenta en <strong>Usuarios</strong> y después selecciónala aquí.</p>
     </div>
   </section>;

@@ -70,8 +70,8 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
     try {
       const saved = await rpc('v2_scan_document', { p_batch_id: batch.id, p_folio: result.folio,
         p_procedencia: result.procedencia, p_nivel: result.nivel, p_document_date: result.documentDate });
-      onMessage(saved.status === 'new' ? `Folio ${saved.folio} registrado por escaneo.`
-        : `El folio ${saved.folio} ya estaba registrado por ${saved.checkedBy}. El nuevo intento quedó en la bitácora.`);
+      onMessage(saved.status === 'new' ? `Folio ${saved.folio} revisado por ${saved.checkedBy}.`
+        : `Folio ${saved.folio} revisado nuevamente por ${saved.checkedBy}. Ambas revisiones quedan en la bitácora.`);
       setResult(null); setStatus('Guardado. Coloca el siguiente documento y lee el recuadro.');
       await onRefresh();
       if (mode === 'photo') onClose();
