@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { isAdmin, logout, readSession, sharedRpc } from '../lib/api';
+import { isAdmin, readSession, sharedRpc } from '../lib/api';
 import { readBook } from '../lib/excelBook';
 import { exportCsv } from '../lib/download';
 import { getFolioWorker } from '../lib/ocr';
 import { drawQr, downloadQr } from '../lib/qr';
 import { useTheme } from '../lib/theme';
 import ThemeToggle from '../components/ThemeToggle';
-import AppSidebar from '../components/AppSidebar';
 import Brand from '../components/Brand';
 import '../styles/organizer.css';
 import '../styles/organizer-react.css';
@@ -158,8 +157,7 @@ export default function LegacyRoomPage() {
 
   if (!allowed) return <div className="organizer-loading" role="status">Comprobando acceso a la sala…</div>;
 
-  return <main className="shell legacy-shell organizer-with-sidebar">
-    <AppSidebar page="legacy" admin onLogout={async () => { await logout(); location.replace('/'); }} />
+  return <main className="shell legacy-shell">
     <header className="topbar"><Brand />
       <div className="organizer-header-actions"><ThemeToggle theme={theme} onToggle={toggleTheme} /><a href="/">Control actual</a></div></header>
     <section className="hero"><div className="eyebrow">SALA ANTERIOR</div><h1>Verifica cada folio.</h1><p>Las marcas de esta sala se sincronizan entre dispositivos.</p></section>

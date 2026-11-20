@@ -21,7 +21,6 @@ button.themeSwitch[aria-checked='true']{border-color:#3b4667;background:linear-g
 .themeSwitchThumb{position:absolute;z-index:1;top:3px;left:3px;width:30px;height:30px;border:1px solid #fff2a7;border-radius:50%;background:#ffe500;box-shadow:0 0 0 3px #ffdf5680,0 0 0 7px #ffe78255,0 0 0 11px #fff0a53d,0 2px 5px #755c3455;transition:transform .45s cubic-bezier(.2,.8,.2,1),background .45s ease,border-color .45s ease,box-shadow .45s ease}
 .themeSwitch[aria-checked='true'] .themeSwitchThumb{transform:translateX(34px);border-color:#f7f8ff;background:radial-gradient(circle at 31% 57%,#b8c1df 0 3px,transparent 3.5px),radial-gradient(circle at 63% 31%,#b8c1df 0 5px,transparent 5.5px),radial-gradient(circle at 67% 72%,#b8c1df 0 3.5px,transparent 4px),#dce2f3;box-shadow:0 0 0 3px #dce2f344,0 0 0 7px #dce2f322,0 2px 6px #0006}
 
-.control-shell.has-sidebar{max-width:none;margin-left:82px}
 :root[data-theme='dark'] .control-header,:root[data-theme='dark'] .topbar,:root[data-theme='dark'] .shell footer{border-color:#353535}
 :root[data-theme='dark'] .control-brand,:root[data-theme='dark'] .header-right,:root[data-theme='dark'] .organizer-header-actions a{color:#eee}
 :root[data-theme='dark'] .auth-card,:root[data-theme='dark'] .setup-card,:root[data-theme='dark'] .panel,:root[data-theme='dark'] .account-card,:root[data-theme='dark'] .scan-card,:root[data-theme='dark'] .shell .card,:root[data-theme='dark'] .shell .result-card,:root[data-theme='dark'] .camera-panel{background:#202020;border-color:#383838;color:#f0f0f0;box-shadow:none}
@@ -43,5 +42,4 @@ button.themeSwitch[aria-checked='true']{border-color:#3b4667;background:linear-g
 :root[data-theme='dark'] .count-control{border-color:#505050}
 :root[data-theme='dark'] .mode-tabs button.selected{background:#dedede;border-color:#dedede;color:#151515}
 :root[data-theme='dark'] .activate-page{background:#101010;color:#f2f2f2}:root[data-theme='dark'] .activate-card{background:#202020;border-color:#383838;box-shadow:none}:root[data-theme='dark'] .activate-card p{color:#b8b8b8}:root[data-theme='dark'] .activate-card a{color:#eee}
-@media(max-width:760px){.control-shell.has-sidebar{margin-left:0}.control-shell.has-sidebar .control-header{padding-left:40px}}
 @media(prefers-reduced-motion:reduce){button.themeSwitch,.themeSwitchStars,.themeSwitchClouds,.themeSwitchThumb{transition:none}.themeSwitchStars::before,.themeSwitchStars::after,.themeSwitchClouds::before,.themeSwitchClouds::after{animation:none}}

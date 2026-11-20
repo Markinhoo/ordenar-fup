@@ -3,7 +3,6 @@ import { accounts, lastBatchKey, logout, readSession, rpc } from '../lib/api';
 import { qnaLabel } from '../lib/qna';
 import { useTheme } from '../lib/theme';
 import ThemeToggle from '../components/ThemeToggle';
-import AppSidebar from '../components/AppSidebar';
 import LoginPanel from '../components/LoginPanel';
 import AccountModal from '../components/AccountModal';
 import BatchSetup from '../components/BatchSetup';
@@ -139,18 +138,21 @@ export default function ControlPage() {
     : section === 'waiting' ? 'Abre tu QR para acceder al listado asignado.'
       : batch ? `${qnaLabel(batch.qna)} · ${batch.fileName} · ${batch.records.length} registros` : '';
 
-  return <div className={`control-shell${session && account ? ' has-sidebar' : ''}${!session ? ' is-auth' : ''}`}>
+  return <div className={`control-shell${!session ? ' is-auth' : ''}`}>
     <header className="control-header">
       <Brand />
+      {session && account && <nav className="header-nav" aria-label="Secciones de trabajo">
+        {isAdmin && <button type="button" className={section === 'setup' ? 'active' : ''} aria-current={section === 'setup' ? 'page' : undefined} onClick={() => setSection('setup')}><span className="nav-long">Preparar lote y Excel</span><span className="nav-short">Preparar</span></button>}
+        <button type="button" className={section === 'list' || section === 'waiting' ? 'active' : ''} aria-current={section === 'list' || section === 'waiting' ? 'page' : undefined}
+          onClick={() => setSection(batch ? 'list' : isAdmin ? 'setup' : 'waiting')}><span className="nav-long">Listado y avance</span><span className="nav-short">Listado</span></button>
+        {isAdmin && batches.length > 0 && <button type="button" className={section === 'history' ? 'active' : ''} aria-current={section === 'history' ? 'page' : undefined} onClick={() => setSection('history')}><span className="nav-long">Bitácora por QNA</span><span className="nav-short">Bitácora</span></button>}
+      </nav>}
       <div className="header-right"><ThemeToggle theme={theme} onToggle={toggleTheme} />
         {session && account && <ProfileMenu account={account} email={session.email} isAdmin={isAdmin}
           onAccount={() => setAccountView('me')}
           onUsers={() => { setAccountView('users'); loadUsers(); }} onLogout={signOut} />}
       </div>
     </header>
-    {session && account && <AppSidebar admin={isAdmin} section={section} hasBatches={batches.length > 0}
-      onNavigate={(next) => setSection(next === 'list' && !batch ? isAdmin ? 'setup' : 'waiting' : next)}
-      onUsers={() => { setAccountView('users'); loadUsers(); }} onAccount={() => setAccountView('me')} onLogout={signOut} />}
     {!session ? <LoginPanel onLogin={setSession} /> : loading ? <BrandedLoader /> : !account ? <main className="auth-panel"><div className="auth-card"><p role="status">No se pudo abrir tu cuenta.</p><p className="message error">{notice.text}</p><button type="button" onClick={signOut}>Salir e intentar de nuevo</button></div></main> : <main className="app-panel">
       <div className="app-top"><div><p className="eyebrow">VERIFICACIÓN FUP</p><h1>{title}</h1><p>{meta}</p></div>
         <div className="top-actions">

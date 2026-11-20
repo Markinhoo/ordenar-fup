@@ -72,12 +72,13 @@ export default function BatchSetup({ users, onCreate, onMessage, hidden }) {
       <p>Elige cuántas personas trabajarán y selecciona sus nombres. El sistema reparte todos los registros del Excel en orden alfabético por RFC.</p>
       <label className="count-label">Personas <input type="number" min="1" max={Math.min(50, records.length || 50)} value={count}
         onChange={(event) => setCount(Math.max(1, Math.min(50, records.length || 50, Number(event.target.value) || 1)))} /></label>
+      <div className="worker-heading" aria-hidden="true"><span>Color</span><span>Persona</span><span>Hojas</span></div>
       <div className="worker-rows">{sizes.map((size, index) => <div className="worker-row" key={index}>
-        <span className="worker-swatch" style={{ backgroundColor: colorFor(index) }} aria-hidden="true" />
+        <span className="worker-swatch" style={{ backgroundColor: colorFor(index) }} title={`Color de persona ${index + 1}`} aria-hidden="true" />
         <select aria-label={`Persona ${index + 1}`} value={selected[index] || ''} onChange={(event) => setSelected((current) => { const next = [...current]; next[index] = event.target.value; return next; })}>
           <option value="">Persona {index + 1}: selecciona usuario</option>
           {users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-        </select><output className="worker-target" aria-label={`Registros para persona ${index + 1}`}>{size}</output>
+        </select><output className="worker-target" aria-label={`Hojas para persona ${index + 1}`}>{size} hojas</output>
       </div>)}</div>
       <p className="allocation-notice">{records.length ? `${records.length} registros digitales repartidos entre ${count} ${count === 1 ? 'persona' : 'personas'}. ${unique ? 'Todos tienen responsable.' : 'Selecciona una cuenta distinta para cada persona.'}` : 'Carga el Excel para calcular el reparto.'}</p>
       <div className="setup-actions"><button className="primary" type="button" onClick={create} disabled={!records.length || !unique || busy}>Crear lote y códigos QR</button>

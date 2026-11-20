@@ -4,12 +4,52 @@ import { distribute } from './qna';
 const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
-const palette = ['#DCEBFF', '#FCE3D7', '#DDF2DF', '#F7E5F4', '#FFF0C8', '#E4E3FF', '#D6F1EE', '#F9DFE8', '#E8EBCB', '#E4E9F2', '#F7E7CF', '#DCEAD9'];
+// Pick each new fill as far as possible from the colors already assigned.
+// Oklab distance is closer to how people perceive color than hue spacing alone.
+function colorPoint(hue, saturation, lightness) {
+  const s = saturation / 100, l = lightness / 100;
+  const a = s * Math.min(l, 1 - l);
+  const channel = (n) => {
+    const k = (n + hue / 30) % 12;
+    const value = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+  };
+  const [r, g, b] = [0, 8, 4].map(channel);
+  const x = Math.cbrt(.4122214708 * r + .5363325363 * g + .0514459929 * b);
+  const y = Math.cbrt(.2119034982 * r + .6806995451 * g + .1073969566 * b);
+  const z = Math.cbrt(.0883024619 * r + .2817188376 * g + .6299787005 * b);
+  return [.2104542553 * x + .793617785 * y - .0040720468 * z,
+    1.9779984951 * x - 2.428592205 * y + .4505937099 * z,
+    .0259040371 * x + .7827717662 * y - .808675766 * z];
+}
+
+function distinctPalette() {
+  const candidates = [59, 73, 86].flatMap((lightness) =>
+    Array.from({ length: 36 }, (_, i) => {
+      const hue = i * 10, saturation = lightness === 86 ? 72 : 80;
+      return { css: `hsl(${hue} ${saturation}% ${lightness}%)`, point: colorPoint(hue, saturation, lightness) };
+    }));
+  const chosen = [candidates.find((item) => item.css === 'hsl(210 80% 73%)')];
+  const remaining = candidates.filter((item) => item !== chosen[0]);
+  while (chosen.length < 50) {
+    let best = null, bestDistance = -1;
+    for (const candidate of remaining) {
+      const distance = Math.min(...chosen.map((item) => item.point.reduce((sum, coordinate, i) =>
+        sum + (coordinate - candidate.point[i]) ** 2, 0)));
+      if (distance > bestDistance) { best = candidate; bestDistance = distance; }
+    }
+    chosen.push(best);
+    remaining.splice(remaining.indexOf(best), 1);
+  }
+  return chosen.map((item) => item.css);
+}
+
+const palette = distinctPalette();
 
 export function colorFor(index) {
   if (index < palette.length) return palette[index];
   const hue = Math.round((index * 137.508) % 360);
-  return `hsl(${hue} 65% 87%)`;
+  return `hsl(${hue} 80% ${[59, 73, 86][index % 3]}%)`;
 }
 
 function hexColor(css) {
