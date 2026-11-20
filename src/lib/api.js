@@ -11,7 +11,7 @@ export function saveSession(data) {
   if (!data?.access_token || !data?.refresh_token) throw new Error('Respuesta de sesión inválida');
   const session = { access_token: data.access_token, refresh_token: data.refresh_token,
     expires_at: Date.now() + (data.expires_in || 3600) * 1000,
-    email: data.user?.email || readSession()?.email || '' };
+    username: data.username || readSession()?.username || '' };
   localStorage.setItem(sessionKey, JSON.stringify(session));
   return session;
 }
@@ -26,8 +26,8 @@ async function authRequest(path, body, token = config.key) {
   return data;
 }
 
-export async function login(email, password) {
-  return saveSession(await authRequest('token?grant_type=password', { email: email.trim(), password }));
+export async function login(username, password) {
+  return saveSession(await accounts('login', { username: username.trim(), password }, true));
 }
 
 export async function logout() {

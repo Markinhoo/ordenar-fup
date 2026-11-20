@@ -55,8 +55,8 @@ export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenS
           <b>{batch.records.filter((record) => record.assignedWorkerId === worker.id && record.checkedAt).length} / {worker.target}</b></div>)}</div>
       </div>
       {batch.isAdmin ? <>
-        <div className="panel"><h2>QR de cada persona</h2><p>Cada QR está ligado al usuario asignado. La persona inicia sesión antes de escanear.</p>
-          <div>{batch.workers.map((worker) => <QrCard key={worker.id} worker={worker} qna={batch.qna} />)}</div></div>
+        <div className="panel"><h2>QR de cada persona</h2><p>Cada QR abre el lote de la persona asignada. Para entrar se necesita su usuario y contraseña.</p>
+          <div>{batch.workers.map((worker) => <QrCard key={worker.id} worker={worker} qna={batch.qna} batchId={batch.id} />)}</div></div>
         <div className="panel"><h2>Añadir documento no digital</h2><p>Solo la encargada puede agregarlo. La observación queda en la bitácora.</p>
           <form className="stack-form" onSubmit={addMissing}>
             <input name="folio" placeholder="No. de documento" inputMode="numeric" required />
@@ -69,7 +69,9 @@ export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenS
             <button className="primary">Añadir y registrar</button>
           </form>
         </div>
-      </> : <div className="panel"><h2>Escanear documento físico</h2><p>Coloca el recuadro completo: procedencia, nivel, No. de documento y fecha.</p>
+      </> : <div className="panel"><h2>Tu QR y escáner</h2><p>Abre este QR con el celular para entrar directamente a tu lote. Inicia sesión con tu usuario. Después escanea el recuadro del documento.</p>
+        {batch.workers.filter((worker) => worker.id === batch.myWorkerId).map((worker) =>
+          <QrCard key={worker.id} worker={worker} qna={batch.qna} batchId={batch.id} />)}
         <button className="primary" type="button" onClick={onOpenScanner}>Abrir cámara</button>
         <label className="photo-button">Tomar foto del recuadro<input type="file" accept="image/*" capture="environment" onChange={(event) => { onPhoto(event.target.files[0]); event.target.value = ''; }} /></label>
       </div>}

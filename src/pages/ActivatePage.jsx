@@ -32,7 +32,7 @@ export default function ActivatePage() {
   return <div className="activate-page"><div className="activate-card">
     <div className="activate-top"><small>ORDENAR FUP · ACCESO INICIAL</small><ThemeToggle theme={theme} onToggle={toggleTheme} /></div>
     <h1>Activa la cuenta administradora</h1>
-    <p>Cuenta: <strong>nomina@fup.com</strong>. Define tu contraseña y una pregunta que solo tú puedas responder. Este enlace vence en 24 horas y funciona una vez.</p>
+    <p>Usuario: <strong>nomina</strong>. Define tu contraseña y una pregunta que solo tú puedas responder. Este enlace vence en 24 horas y funciona una vez.</p>
     {valid && !done && <form onSubmit={activate}>
       <label>Contraseña<input type="password" autoComplete="new-password" minLength="8" maxLength="128" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
       <label>Pregunta de respaldo<input minLength="10" maxLength="160" placeholder="Una pregunta que solo tú sepas responder" value={question} onChange={(event) => setQuestion(event.target.value)} required /></label>

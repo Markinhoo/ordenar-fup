@@ -15,7 +15,9 @@ export default function BatchSetup({ users, onCreate, onMessage, hidden }) {
   const [qna, setQna] = useState(initialQna);
   const [busy, setBusy] = useState(false);
   const sizes = useMemo(() => distribute(records.length, count), [records.length, count]);
-  const unique = selected.slice(0, count).every(Boolean) && new Set(selected.slice(0, count)).size === count;
+  const operators = users.filter((user) => user.role === 'operador');
+  const unique = selected.slice(0, count).every((id) => operators.some((user) => user.id === id))
+    && new Set(selected.slice(0, count)).size === count;
 
   async function loadFile(file) {
     if (!file) return;
@@ -37,7 +39,7 @@ export default function BatchSetup({ users, onCreate, onMessage, hidden }) {
     if (busy || !records.length || !unique) return;
     const workers = selected.slice(0, count).map((id, index) => {
       const user = users.find((item) => item.id === id);
-      return user && { name: user.name, email: user.email, target: sizes[index] };
+      return user && { userId: user.id, target: sizes[index] };
     });
     if (workers.some((item) => !item)) { onMessage('Selecciona una cuenta distinta para cada persona.', true); return; }
     const code = qnaCode(qna.month, qna.half);
@@ -79,7 +81,7 @@ export default function BatchSetup({ users, onCreate, onMessage, hidden }) {
         <span className="worker-swatch" style={{ backgroundColor: colorFor(index) }} title={`Color de persona ${index + 1}`} aria-hidden="true" />
         <select aria-label={`Persona ${index + 1}`} value={selected[index] || ''} onChange={(event) => setSelected((current) => { const next = [...current]; next[index] = event.target.value; return next; })}>
           <option value="">Persona {index + 1}: selecciona usuario</option>
-          {users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+          {operators.map((user) => <option key={user.id} value={user.id}>{user.name} (@{user.username})</option>)}
         </select><output className="worker-target" aria-label={`Hojas para persona ${index + 1}`}>{size} hojas</output>
       </div>)}</div>
       <p className="allocation-notice">{records.length ? `${records.length} registros digitales repartidos entre ${count} ${count === 1 ? 'persona' : 'personas'}. ${unique ? 'Todos tienen responsable.' : 'Selecciona una cuenta distinta para cada persona.'}` : 'Carga el Excel para calcular el reparto.'}</p>

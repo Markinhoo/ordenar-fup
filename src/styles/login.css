@@ -118,3 +118,20 @@ body,:root[data-theme='dark'] body{background:var(--fup-wallpaper) center/cover 
 .control-shell .setup-card .qna-fields label,
 .control-shell .setup-card .count-label{font-size:14px}
 @media(max-width:760px){.control-shell .setup-card .worker-heading,.control-shell .setup-card .worker-row{grid-template-columns:27px minmax(0,1fr) 85px;gap:7px}.control-shell .setup-card .worker-row .worker-swatch{width:24px;height:24px}.control-shell .setup-card .worker-row select,.control-shell .setup-card .worker-row .worker-target{font-size:12px;padding:7px 4px}}
+
+.account-card .users-section{display:grid;gap:10px;min-width:0}
+.account-card .users-section>.stack-form{border-top:0;padding-top:0}
+.account-card .users-section h3{margin:10px 0 0}
+.account-card #usersList{display:grid;gap:9px;margin-top:2px}
+.account-card #usersList>.user-entry{display:block;min-width:0;padding:10px;border:1px solid var(--fup-line);border-radius:9px;background:var(--fup-field)}
+:root[data-theme='dark'] .account-card #usersList>.user-entry{background:#2c2c2c;border-color:#444}
+.account-card .user-summary{display:flex;align-items:center;gap:8px;min-width:0}
+.account-card .user-summary>span{display:grid;gap:2px;min-width:0;flex:1}
+.account-card .user-summary strong,.account-card .user-summary small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-card .user-summary small{color:var(--fup-muted)}
+.account-card .user-summary select{max-width:135px;min-width:100px;border:1px solid var(--fup-line);border-radius:7px;padding:6px;font-size:12px}
+.account-card .user-summary button{flex:none}
+.account-card .user-edit{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;padding-top:10px;border-top:1px solid var(--fup-line)}
+.account-card .user-edit input{flex:1 1 170px;min-width:0}
+.account-card .user-edit button{flex:0 0 auto}
+@media(max-width:600px){.account-card .user-summary{flex-wrap:wrap}.account-card .user-summary>span{flex-basis:100%}.account-card .user-summary select{flex:1;max-width:none}}
