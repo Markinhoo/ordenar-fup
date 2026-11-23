@@ -17,6 +17,7 @@ import '../styles/control.css';
 import '../styles/login.css';
 
 export default function ControlPage() {
+  const scanOnly = new URLSearchParams(location.search).get('scan') === '1';
   const [theme, toggleTheme] = useTheme();
   const [session, setSession] = useState(readSession);
   const [pairing, setPairing] = useState(() => new URLSearchParams(location.hash.slice(1)).get('pair') || '');
@@ -27,7 +28,7 @@ export default function ControlPage() {
   const [section, setSection] = useState(() => /\/organizar(?:\.html)?$/i.test(location.pathname) ? 'setup' : 'waiting');
   const [notice, setNotice] = useState({ text: '', error: false });
   const [accountView, setAccountView] = useState(null);
-  const [scanMode, setScanMode] = useState(null);
+  const [scanMode, setScanMode] = useState(scanOnly ? 'camera' : null);
   const [photo, setPhoto] = useState(null);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [setupVersion, setSetupVersion] = useState(0);
@@ -84,7 +85,8 @@ export default function ControlPage() {
           history.replaceState(null, '', url);
           message(`Acceso activado para ${claim.name}.`);
         }
-        const candidates = [...new Set([url.searchParams.get('b'), localStorage.getItem(lastBatchKey), owned[0]?.id].filter(Boolean))];
+        const candidates = scanOnly ? [url.searchParams.get('b')].filter(Boolean)
+          : [...new Set([url.searchParams.get('b'), localStorage.getItem(lastBatchKey), owned[0]?.id].filter(Boolean))];
         let opened = false;
         for (const id of candidates) {
           try { await openBatch(id); opened = true; break; }
@@ -162,6 +164,19 @@ export default function ControlPage() {
   const meta = section === 'users' ? 'Crea cuentas, cambia roles y administra los accesos del equipo.' : section === 'setup' ? 'Un archivo y una asignación para el lote compartido y el Excel descargable.'
     : section === 'waiting' ? 'La encargada aún no te asigna un lote. Cuando lo haga aparecerá aquí.'
       : batch ? `${qnaLabel(batch.qna)} · ${batch.fileName} · ${batch.records.length} registros` : '';
+
+  if (scanOnly && (pairing || loading || (session && !account))) return <div className="scan-only-shell"><BrandedLoader /></div>;
+  if (scanOnly && (!session || !account || !batch)) return <div className="scan-only-shell"><div className="scan-reopen">
+    <h1>No se pudo abrir el escáner</h1><p role="alert">{notice.text || 'El QR venció o no tienes acceso a este lote. Genera otro QR desde tu sesión en la computadora.'}</p>
+  </div></div>;
+  if (scanOnly) return <div className="scan-only-shell">
+    {!scanMode && <div className="scan-reopen"><h1>Escáner FUP</h1><p>{account.name} · {qnaLabel(batch.qna)}</p>
+      {notice.text && <p role="status">{notice.text}</p>}
+      <button className="primary" type="button" onClick={() => setScanMode('camera')}>Abrir cámara</button>
+      <label className="photo-button">Tomar foto del recuadro<input type="file" accept="image/*" capture="environment" onChange={(event) => { if (event.target.files[0]) { setPhoto(event.target.files[0]); setScanMode('photo'); } event.target.value = ''; }} /></label>
+    </div>}
+    <ScanModal batch={batch} mode={scanMode} photo={photo} standalone onClose={() => { setScanMode(null); setPhoto(null); }} onRefresh={refreshBatch} onMessage={message} />
+  </div>;
 
   return <div className={`control-shell${!session ? ' is-auth' : ''}`}>
     <header className="control-header">

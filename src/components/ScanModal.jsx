@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { rpc } from '../lib/api';
 import { readDocumentFields } from '../lib/ocr';
 
-export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMessage }) {
+export default function ScanModal({ batch, mode, photo, standalone = false, onClose, onRefresh, onMessage }) {
   const videoRef = useRef(null);
   const guideRef = useRef(null);
   const modalRef = useRef(null);
@@ -91,6 +91,16 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
     }
   }, []);
 
+  useEffect(() => {
+    if (mode !== 'camera' || !standalone) return;
+    const frame = requestAnimationFrame(() => {
+      modalRef.current?.requestFullscreen?.()
+        .then(() => screen.orientation?.lock?.('landscape')?.catch?.(() => {}))
+        .catch(() => {});
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [mode, standalone]);
+
   async function expandCamera() {
     if (!modalRef.current?.requestFullscreen) {
       setStatus('Gira el celular a horizontal. Si el giro está bloqueado, actívalo en los ajustes del teléfono.');
@@ -100,7 +110,7 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
       await modalRef.current.requestFullscreen();
       if (screen.orientation?.lock) {
         await screen.orientation.lock('landscape');
-        setStatus('Coloca las tres filas dentro de la guía y pulsa Leer recuadro.');
+        setStatus('Coloca las tres filas dentro de la guía. La lectura se hará automáticamente.');
       } else setStatus('Gira el celular a horizontal para ampliar la cámara.');
     } catch {
       setStatus('Gira el celular a horizontal. Si el giro está bloqueado, actívalo en los ajustes del teléfono.');
@@ -169,7 +179,7 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
   }
 
   if (!mode) return null;
-  return <div ref={modalRef} className="scan-modal" role="dialog" aria-modal="true" aria-label="Escanear recuadro del documento" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+  return <div ref={modalRef} className={`scan-modal${standalone ? ' scan-standalone' : ''}`} role="dialog" aria-modal="true" aria-label="Escanear recuadro del documento" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <div className={`scan-card${result ? ' has-result' : ''}`}><div className="scan-heading"><strong>Escanear recuadro completo</strong><button type="button" aria-label="Cerrar" onClick={onClose}>×</button></div>
       {mode === 'camera' && <><div className="scan-orientation"><span>Gira el celular a horizontal para ampliar el recuadro.</span><button type="button" onClick={expandCamera}>Pantalla completa horizontal</button></div><div className="video-wrap"><video ref={videoRef} autoPlay playsInline muted /><div ref={guideRef} className={`scan-guide laser-${signal}`} aria-label="Guía para las tres filas del recuadro" />{signal === 'success' && <div className="scan-success" aria-label="Documento registrado">✓</div>}</div></>}
       <p role="status">{status}</p>

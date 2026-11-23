@@ -25,12 +25,13 @@ export default function PersonalQr({ batchId, name }) {
     if (!token || !canvas.current || !batchId) return;
     const url = new URL('/', location.href);
     url.searchParams.set('b', batchId);
+    url.searchParams.set('scan', '1');
     url.hash = `pair=${token}`;
     drawQr(canvas.current, url.href);
   }, [token, batchId]);
 
   return <div className="personal-qr"><h2>Tu QR de acceso al celular</h2>
-    <p>{name ? `${name}, ya iniciaste sesión` : 'Ya iniciaste sesión'}. Escanea este QR con el celular para abrir este lote en tu cuenta, sin escribir de nuevo usuario y contraseña. Cada QR dura dos minutos y solo se puede usar una vez.</p>
+    <p>{name ? `${name}, ya iniciaste sesión` : 'Ya iniciaste sesión'}. Escanea este QR con el celular para abrir directamente el escáner de este lote, sin escribir de nuevo usuario y contraseña. Cada QR dura dos minutos y solo se puede usar una vez.</p>
     {error ? <p role="alert">{error}</p> : token ? <canvas ref={canvas} role="img" aria-label="QR personal temporal para abrir tu cuenta en el celular" /> : <p>Preparando QR…</p>}
     <button type="button" onClick={() => setVersion((current) => current + 1)}>Renovar QR</button>
   </div>;
