@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { accounts, lastBatchKey, logout, readSession, rpc } from '../lib/api';
+import { accounts, lastBatchKey, logout, readSession, rpc, saveSession } from '../lib/api';
 import { qnaLabel } from '../lib/qna';
 import { useTheme } from '../lib/theme';
 import ThemeToggle from '../components/ThemeToggle';
@@ -13,12 +13,14 @@ import ScanModal from '../components/ScanModal';
 import Brand from '../components/Brand';
 import ProfileMenu from '../components/ProfileMenu';
 import BrandedLoader from '../components/BrandedLoader';
+import PersonalQr from '../components/PersonalQr';
 import '../styles/control.css';
 import '../styles/login.css';
 
 export default function ControlPage() {
   const [theme, toggleTheme] = useTheme();
   const [session, setSession] = useState(readSession);
+  const [pairing, setPairing] = useState(() => new URLSearchParams(location.hash.slice(1)).get('pair') || '');
   const [account, setAccount] = useState(null);
   const [users, setUsers] = useState([]);
   const [batches, setBatches] = useState([]);
@@ -32,6 +34,16 @@ export default function ControlPage() {
   const [loading, setLoading] = useState(!!session);
   const isAdmin = account?.isAdmin === true;
   const message = useCallback((text, error = false) => setNotice({ text, error }), []);
+
+  useEffect(() => {
+    if (!pairing) return;
+    let active = true;
+    accounts('redeem-device', { token: pairing }, true)
+      .then((data) => { if (active) setSession(saveSession(data)); })
+      .catch((error) => { if (active) message(error.message, true); })
+      .finally(() => { if (active) { history.replaceState(null, '', location.pathname + location.search); setPairing(''); } });
+    return () => { active = false; };
+  }, [pairing, message]);
 
   const openBatch = useCallback(async (id) => {
     const data = await rpc('v2_get_batch', { p_batch_id: id });
@@ -167,7 +179,7 @@ export default function ControlPage() {
           onUsers={() => { setSection('users'); loadUsers(); }} onLogout={signOut} />}
       </div>
     </header>
-    {!session ? <LoginPanel onLogin={setSession} /> : loading ? <BrandedLoader /> : !account ? <main className="auth-panel"><div className="auth-card"><p role="status">No se pudo abrir tu cuenta.</p><p className="message error">{notice.text}</p><button type="button" onClick={signOut}>Salir e intentar de nuevo</button></div></main> : <main className="app-panel">
+    {pairing ? <BrandedLoader /> : !session ? <LoginPanel onLogin={setSession} /> : loading ? <BrandedLoader /> : !account ? <main className="auth-panel"><div className="auth-card"><p role="status">No se pudo abrir tu cuenta.</p><p className="message error">{notice.text}</p><button type="button" onClick={signOut}>Salir e intentar de nuevo</button></div></main> : <main className="app-panel">
       <div className="app-top"><div><p className="eyebrow">VERIFICACIÓN FUP</p><h1>{title}</h1><p>{meta}</p></div>
         <div className="top-actions" hidden={section === 'users'}>
           {batches.length > 0 && <><select aria-label="Elegir lote" value={batch?.id || ''} onChange={(event) => openBatch(event.target.value).catch((error) => message(error.message, true))}>
@@ -178,7 +190,7 @@ export default function ControlPage() {
       <p className={`message${notice.error ? ' error' : ''}`} role="status" aria-live="polite">{notice.text}</p>
       {isAdmin && <BatchSetup users={users} hidden={section !== 'setup'} onCreate={createBatch} onMessage={message} />}
       {isAdmin && <UsersPage account={account} users={users} hidden={section !== 'users'} onUsersChanged={loadUsers} onAccountChanged={setAccount} />}
-      <section className="section waiting-section" hidden={section !== 'waiting'}><div className="panel waiting-card"><h2>Listo para verificar</h2><p>Iniciaste sesión. Cuando la encargada te asigne un lote, aparecerá aquí automáticamente con tu QR y el escáner.</p></div></section>
+      <section className="section waiting-section" hidden={section !== 'waiting'}><div className="panel waiting-card"><h2>Listo para verificar</h2>{!isAdmin && <PersonalQr />}<p>Cuando la encargada te asigne un lote, aparecerá aquí automáticamente para escanear.</p></div></section>
       {batch && <><BatchList batch={batch} hidden={section !== 'list'} onMessage={message} onRefresh={refreshBatch}
         onOpenScanner={() => setScanMode('camera')} onPhoto={(file) => { if (file) { setPhoto(file); setScanMode('photo'); } }} />
         {isAdmin && <HistoryView batch={batch} batches={batches} hidden={section !== 'history'} version={historyVersion} onMessage={message} />}

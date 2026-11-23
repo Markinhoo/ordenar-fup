@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { rpc } from '../lib/api';
 import { exportCsv } from '../lib/download';
 import { qnaLabel } from '../lib/qna';
-import QrCard from './QrCard';
+import PersonalQr from './PersonalQr';
 
 export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenScanner, onPhoto }) {
   const [query, setQuery] = useState('');
@@ -55,8 +55,6 @@ export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenS
           <b>{batch.records.filter((record) => record.assignedWorkerId === worker.id && record.checkedAt).length} / {worker.target}</b></div>)}</div>
       </div>
       {batch.isAdmin ? <>
-        <div className="panel"><h2>QR de cada persona</h2><p>Cada QR abre el lote en el celular. Se necesita una cuenta asignada al lote; cualquier operador del lote puede ayudar a escanear otros folios.</p>
-          <div>{batch.workers.map((worker) => <QrCard key={worker.id} worker={worker} qna={batch.qna} batchId={batch.id} />)}</div></div>
         <div className="panel"><h2>Añadir documento no digital</h2><p>Solo la encargada puede agregarlo. La observación queda en la bitácora.</p>
           <form className="stack-form" onSubmit={addMissing}>
             <input name="folio" placeholder="No. de documento" inputMode="numeric" required />
@@ -69,9 +67,7 @@ export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenS
             <button className="primary">Añadir y registrar</button>
           </form>
         </div>
-      </> : <div className="panel"><h2>Tu QR y escáner</h2><p>Abre este QR con el celular e inicia sesión con tu usuario. Puedes ayudar a revisar folios asignados a otra persona del mismo lote; tu nombre quedará como responsable del escaneo.</p>
-        {batch.workers.filter((worker) => worker.id === batch.myWorkerId).map((worker) =>
-          <QrCard key={worker.id} worker={worker} qna={batch.qna} batchId={batch.id} />)}
+      </> : <div className="panel"><PersonalQr /><p>Puedes ayudar a revisar folios de otra persona del mismo lote; tu nombre quedará como responsable del escaneo.</p>
         <button className="primary" type="button" onClick={onOpenScanner}>Abrir cámara</button>
         <label className="photo-button">Tomar foto del recuadro<input type="file" accept="image/*" capture="environment" onChange={(event) => { onPhoto(event.target.files[0]); event.target.value = ''; }} /></label>
       </div>}

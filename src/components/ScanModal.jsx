@@ -7,6 +7,11 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
   const guideRef = useRef(null);
   const modalRef = useRef(null);
   const streamRef = useRef(null);
+  const busyRef = useRef(false);
+  const seenFolioRef = useRef('');
+  const candidateRef = useRef({ signature: '', count: 0 });
+  const signalTimerRef = useRef(null);
+  const [signal, setSignal] = useState('scanning');
   const [result, setResult] = useState(null);
   const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -37,6 +42,48 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
 
   useEffect(() => { if (mode === 'photo' && photo) readImage(photo); }, [mode, photo]);
   useEffect(() => { setResult(null); }, [mode, photo]);
+  useEffect(() => () => clearTimeout(signalTimerRef.current), []);
+  useEffect(() => {
+    if (mode !== 'camera') return;
+    const timer = setInterval(async () => {
+      if (busyRef.current || !streamRef.current || document.hidden) return;
+      const image = capture();
+      if (!image) return;
+      busyRef.current = true;
+      try {
+        const parsed = await readDocumentFields(image, batch.records);
+        if (!parsed.procedencia || !parsed.nivel || !parsed.folio || !parsed.documentDate) {
+          candidateRef.current = { signature: '', count: 0 }; return;
+        }
+        const signature = [parsed.procedencia, parsed.nivel, parsed.folio, parsed.documentDate].join('|');
+        candidateRef.current = candidateRef.current.signature === signature
+          ? { signature, count: candidateRef.current.count + 1 } : { signature, count: 1 };
+        if (candidateRef.current.count < 2) { setStatus('Confirmando la lectura del recuadro…'); return; }
+        if (parsed.folio === seenFolioRef.current) return;
+        seenFolioRef.current = parsed.folio;
+        const record = batch.records.find((item) => String(item.folio).match(/^\d+/)?.[0] === parsed.folio);
+        if (!record) { setSignal('error'); setStatus(`Folio ${parsed.folio} no está en este lote.`); return; }
+        if (record.checkedAt) {
+          setSignal('duplicate'); setStatus(`Documento ya escaneado: ${parsed.folio}`);
+          clearTimeout(signalTimerRef.current);
+          signalTimerRef.current = setTimeout(() => setSignal('scanning'), 2000);
+          return;
+        }
+        const saved = await rpc('v2_scan_document', { p_batch_id: batch.id, p_folio: parsed.folio,
+          p_procedencia: parsed.procedencia, p_nivel: parsed.nivel, p_document_date: parsed.documentDate });
+        if (saved.status === 'already') {
+          setSignal('duplicate'); setStatus(`Documento ya escaneado: ${saved.folio}`);
+        } else {
+          setSignal('success'); setStatus(`✓ Folio ${saved.folio} registrado. Coloca el siguiente documento.`);
+        }
+        clearTimeout(signalTimerRef.current);
+        signalTimerRef.current = setTimeout(() => setSignal('scanning'), 2000);
+        await onRefresh();
+      } catch (error) { setSignal('error'); setStatus(error.message); seenFolioRef.current = ''; }
+      finally { busyRef.current = false; }
+    }, 1600);
+    return () => clearInterval(timer);
+  }, [mode, batch]);
   useEffect(() => () => {
     if (document.fullscreenElement === modalRef.current) {
       screen.orientation?.unlock?.();
@@ -84,7 +131,7 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
   function capture() {
     const video = videoRef.current;
     const guide = guideRef.current;
-    if (!video?.videoWidth || !guide) { setStatus('Espera a que aparezca la imagen.'); return; }
+    if (!video?.videoWidth || !guide) return null;
     const frame = video.getBoundingClientRect();
     const target = guide.getBoundingClientRect();
     const scale = Math.max(frame.width / video.videoWidth, frame.height / video.videoHeight);
@@ -100,10 +147,10 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
     const bottom = Math.min(video.videoHeight, (target.bottom - frame.top - offsetY + padY) / scale);
     const width = right - left;
     const height = bottom - top;
-    if (width < 1 || height < 1) { setStatus('No se pudo encuadrar el documento. Gira el celular e intenta de nuevo.'); return; }
+    if (width < 1 || height < 1) return null;
     const canvas = document.createElement('canvas'); canvas.width = Math.round(width * 2); canvas.height = Math.round(height * 2);
     canvas.getContext('2d').drawImage(video, left, top, width, height, 0, 0, canvas.width, canvas.height);
-    readImage(canvas);
+    return canvas;
   }
 
   async function save() {
@@ -124,9 +171,8 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
   if (!mode) return null;
   return <div ref={modalRef} className="scan-modal" role="dialog" aria-modal="true" aria-label="Escanear recuadro del documento" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <div className={`scan-card${result ? ' has-result' : ''}`}><div className="scan-heading"><strong>Escanear recuadro completo</strong><button type="button" aria-label="Cerrar" onClick={onClose}>×</button></div>
-      {mode === 'camera' && <><div className="scan-orientation"><span>Gira el celular a horizontal para ampliar el recuadro.</span><button type="button" onClick={expandCamera}>Pantalla completa horizontal</button></div><div className="video-wrap"><video ref={videoRef} autoPlay playsInline muted /><div ref={guideRef} className="scan-guide" aria-label="Guía para las tres filas del recuadro" /></div></>}
+      {mode === 'camera' && <><div className="scan-orientation"><span>Gira el celular a horizontal para ampliar el recuadro.</span><button type="button" onClick={expandCamera}>Pantalla completa horizontal</button></div><div className="video-wrap"><video ref={videoRef} autoPlay playsInline muted /><div ref={guideRef} className={`scan-guide laser-${signal}`} aria-label="Guía para las tres filas del recuadro" />{signal === 'success' && <div className="scan-success" aria-label="Documento registrado">✓</div>}</div></>}
       <p role="status">{status}</p>
-      {mode === 'camera' && <button className="primary" type="button" onClick={capture} disabled={reading || saving}>Leer recuadro</button>}
       {result && <div id="scanResult"><dl>
         <div><dt>Procedencia</dt><dd>{result.procedencia}</dd></div><div><dt>Nivel</dt><dd>{result.nivel}</dd></div>
         <div><dt>No. de documento</dt><dd>{result.folio}</dd></div><div><dt>Fecha</dt><dd>{result.documentDate}</dd></div>

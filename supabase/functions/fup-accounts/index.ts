@@ -151,6 +151,24 @@ Deno.serve(async (request) => {
       return reply({ ok: true }, 200, origin);
     }
 
+    if (input.action === 'redeem-device') {
+      const token = String(input.token || '');
+      if (!/^[0-9a-f]{64}$/.test(token)) return reply({ error: 'QR inválido' }, 400, origin);
+      const userId = await supabase('/rest/v1/rpc/v10_consume_device_pair', 'POST',
+        { p_token: token }, secretKey, 'fup-sep');
+      const account = userId && await accountByUser(userId);
+      if (!account || account.role !== 'operador') return reply({ error: 'El QR venció o ya fue usado' }, 403, origin);
+      const link = await supabase('/auth/v1/admin/generate_link', 'POST',
+        { type: 'magiclink', email: account.email }, secretKey);
+      const hash = link?.hashed_token || link?.properties?.hashed_token;
+      if (!hash) throw new Error('No se pudo emitir la sesión del dispositivo');
+      const session = await supabase('/auth/v1/verify', 'POST',
+        { type: 'magiclink', token_hash: hash }, publicKey);
+      if (session?.user?.id !== userId || !session.access_token || !session.refresh_token)
+        throw new Error('Sesión del dispositivo inválida');
+      return reply({ ...session, username: account.username }, 200, origin);
+    }
+
     const user = await currentUser(request);
     if (!user) return reply({ error: 'Inicia sesión' }, 401, origin);
     const admin = await isAdmin(user);
@@ -165,6 +183,13 @@ Deno.serve(async (request) => {
 
     const account = await accountByUser(user.id);
     if (!account) return reply({ error: 'Cuenta sin autorización FUP' }, 403, origin);
+
+    if (input.action === 'issue-device') {
+      if (account.role !== 'operador') return reply({ error: 'Solo operadores pueden abrir el escáner' }, 403, origin);
+      const token = await supabase('/rest/v1/rpc/v10_issue_device_pair', 'POST',
+        {}, user.token, 'fup-sep');
+      return reply({ token, expiresIn: 120 }, 200, origin);
+    }
 
     if (input.action === 'set-recovery') {
       const question = String(input.question || '').trim();

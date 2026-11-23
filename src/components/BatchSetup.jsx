@@ -86,7 +86,7 @@ export default function BatchSetup({ users, onCreate, onMessage, hidden }) {
         </select><output className="worker-target" aria-label={`Hojas para persona ${index + 1}`}>{size} hojas</output>
       </div>)}</div>
       <p className="allocation-notice">{records.length ? `${records.length} registros digitales repartidos entre ${count} ${count === 1 ? 'persona' : 'personas'}. ${unique ? 'Todos tienen responsable.' : 'Selecciona una cuenta distinta para cada persona.'}` : 'Carga el Excel para calcular el reparto.'}</p>
-      <div className="setup-actions"><button className="primary" type="button" onClick={create} disabled={!records.length || !unique || busy}>Crear lote y códigos QR</button>
+      <div className="setup-actions"><button className="primary" type="button" onClick={create} disabled={!records.length || !unique || busy}>Crear lote de trabajo</button>
         <label className="color-download-option"><input type="checkbox" checked={withColors} onChange={(event) => setWithColors(event.target.checked)} /> Con colores</label>
         <button type="button" onClick={download} disabled={!book || (withColors && !unique) || busy}>Descargar Excel ordenado</button></div>
       <p>Si falta alguien, crea su cuenta en <strong>Usuarios</strong> y después selecciónala aquí.</p>

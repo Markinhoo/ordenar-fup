@@ -59,4 +59,10 @@ Al crear una cuenta o cambiar la pregunta de respaldo, se elige entre lugar de n
 
 La descarga del Excel alfabetizado tiene una casilla **Con colores**. Sin marcarla, se ordenan RFC y folio sin añadir colores ni la leyenda de distribución, y no hace falta seleccionar operadores. Al marcarla, se pintan los registros por persona y se añade la leyenda al final.
 
-`supabase/fup-sep-v9.sql` permite que un operador ya asignado al lote escanee cualquier folio de ese mismo lote para ayudar a otra persona. La asignación original no cambia. **Responsable** muestra a quien hizo el último escaneo y la bitácora conserva todos los intentos anteriores. Un operador ajeno al lote no puede entrar ni escanearlo.
+`supabase/fup-sep-v9.sql` permite que un operador ya asignado al lote escanee cualquier folio de ese mismo lote para ayudar a otra persona. La asignación original no cambia. **Responsable** muestra a quien registró el documento y la bitácora conserva las revisiones registradas. Un operador ajeno al lote no puede entrar ni escanearlo.
+
+## QR personal y escaneo continuo
+
+`supabase/fup-sep-v10.sql` crea códigos temporales de un solo uso en `fup-sep`. La función `fup-accounts` emite el QR al operador que ya inició sesión y, al canjearlo desde el celular, abre su propia cuenta sin volver a pedir contraseña. Cada código vence en dos minutos y se renueva mientras la pantalla está abierta. El QR pertenece a la cuenta, no a un lote.
+
+El escáner lee automáticamente el recuadro y espera dos lecturas iguales antes de registrar. Muestra una palomita verde al guardar. `supabase/fup-sep-v11.sql` impide que un folio ya registrado cambie de responsable: un nuevo intento muestra **Documento ya escaneado**.
