@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { accounts } from '../lib/api';
 import { drawQr } from '../lib/qr';
 
-export default function PersonalQr() {
+export default function PersonalQr({ batchId, name }) {
   const canvas = useRef(null);
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
@@ -22,14 +22,15 @@ export default function PersonalQr() {
   }, [version]);
 
   useEffect(() => {
-    if (!token || !canvas.current) return;
+    if (!token || !canvas.current || !batchId) return;
     const url = new URL('/', location.href);
+    url.searchParams.set('b', batchId);
     url.hash = `pair=${token}`;
     drawQr(canvas.current, url.href);
-  }, [token]);
+  }, [token, batchId]);
 
   return <div className="personal-qr"><h2>Tu QR de acceso al celular</h2>
-    <p>Ya iniciaste sesión. Escanea este QR con el celular para abrir tu cuenta sin escribir de nuevo usuario y contraseña. Se renueva cada dos minutos y solo se puede usar una vez.</p>
+    <p>{name ? `${name}, ya iniciaste sesión` : 'Ya iniciaste sesión'}. Escanea este QR con el celular para abrir este lote en tu cuenta, sin escribir de nuevo usuario y contraseña. Cada QR dura dos minutos y solo se puede usar una vez.</p>
     {error ? <p role="alert">{error}</p> : token ? <canvas ref={canvas} role="img" aria-label="QR personal temporal para abrir tu cuenta en el celular" /> : <p>Preparando QR…</p>}
     <button type="button" onClick={() => setVersion((current) => current + 1)}>Renovar QR</button>
   </div>;

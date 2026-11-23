@@ -49,6 +49,11 @@ export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenS
 
   return <section className="section list-section" hidden={hidden}>
     <div className="list-side">
+      {!batch.isAdmin && !hidden && <div className="panel"><PersonalQr batchId={batch.id} name={people.get(batch.myWorkerId)} />
+        <p>Puedes ayudar a revisar folios de otra persona del mismo lote; tu nombre quedará como responsable del escaneo.</p>
+        <button className="primary" type="button" onClick={onOpenScanner}>Abrir cámara</button>
+        <label className="photo-button">Tomar foto del recuadro<input type="file" accept="image/*" capture="environment" onChange={(event) => { onPhoto(event.target.files[0]); event.target.value = ''; }} /></label>
+      </div>}
       <div className="panel progress-panel"><h2>Avance del lote</h2><strong>{checked} / {total}</strong>
         <div className="progress-track"><div style={{ width: total ? `${checked / total * 100}%` : '0%' }} /></div>
         <div>{batch.workers.map((worker) => <div className="worker-progress-row" key={worker.id}><span>{worker.name}</span>
@@ -67,10 +72,7 @@ export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenS
             <button className="primary">Añadir y registrar</button>
           </form>
         </div>
-      </> : <div className="panel"><PersonalQr /><p>Puedes ayudar a revisar folios de otra persona del mismo lote; tu nombre quedará como responsable del escaneo.</p>
-        <button className="primary" type="button" onClick={onOpenScanner}>Abrir cámara</button>
-        <label className="photo-button">Tomar foto del recuadro<input type="file" accept="image/*" capture="environment" onChange={(event) => { onPhoto(event.target.files[0]); event.target.value = ''; }} /></label>
-      </div>}
+      </> : null}
     </div>
     <div className="panel records-panel">
       <div className="panel-heading"><div><h2>Listado por RFC</h2><p>{visible.length} de {total} registros · orden RFC</p></div>

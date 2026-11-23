@@ -63,6 +63,6 @@ La descarga del Excel alfabetizado tiene una casilla **Con colores**. Sin marcar
 
 ## QR personal y escaneo continuo
 
-`supabase/fup-sep-v10.sql` crea códigos temporales de un solo uso en `fup-sep`. La función `fup-accounts` emite el QR al operador que ya inició sesión y, al canjearlo desde el celular, abre su propia cuenta sin volver a pedir contraseña. Cada código vence en dos minutos y se renueva mientras la pantalla está abierta. El QR pertenece a la cuenta, no a un lote.
+`supabase/fup-sep-v10.sql` crea códigos temporales de un solo uso en `fup-sep`. El QR aparece al principio del listado únicamente cuando un operador ya inició sesión y tiene un lote asignado. Al escanearlo desde el celular se abre su propia cuenta directamente en ese lote, sin volver a pedir usuario y contraseña. Cada código vence en dos minutos y se renueva mientras el listado está abierto. El QR identifica a la cuenta; la dirección también indica qué lote abrir. Los documentos se registran con la identidad de esa cuenta.
 
 El escáner lee automáticamente el recuadro y espera dos lecturas iguales antes de registrar. Muestra una palomita verde al guardar. `supabase/fup-sep-v11.sql` impide que un folio ya registrado cambie de responsable: un nuevo intento muestra **Documento ya escaneado**.

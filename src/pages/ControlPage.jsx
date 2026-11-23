@@ -13,7 +13,6 @@ import ScanModal from '../components/ScanModal';
 import Brand from '../components/Brand';
 import ProfileMenu from '../components/ProfileMenu';
 import BrandedLoader from '../components/BrandedLoader';
-import PersonalQr from '../components/PersonalQr';
 import '../styles/control.css';
 import '../styles/login.css';
 
@@ -31,6 +30,7 @@ export default function ControlPage() {
   const [scanMode, setScanMode] = useState(null);
   const [photo, setPhoto] = useState(null);
   const [historyVersion, setHistoryVersion] = useState(0);
+  const [setupVersion, setSetupVersion] = useState(0);
   const [loading, setLoading] = useState(!!session);
   const isAdmin = account?.isAdmin === true;
   const message = useCallback((text, error = false) => setNotice({ text, error }), []);
@@ -184,13 +184,13 @@ export default function ControlPage() {
         <div className="top-actions" hidden={section === 'users'}>
           {batches.length > 0 && <><select aria-label="Elegir lote" value={batch?.id || ''} onChange={(event) => openBatch(event.target.value).catch((error) => message(error.message, true))}>
             {batches.map((item) => <option key={item.id} value={item.id}>{qnaLabel(item.qna)} · {item.fileName}</option>)}
-          </select>{isAdmin && <button type="button" onClick={() => setSection('setup')}>Nuevo lote</button>}</>}
+          </select>{isAdmin && <button type="button" onClick={() => { setSetupVersion((value) => value + 1); setSection('setup'); }}>Nuevo lote</button>}</>}
         </div>
       </div>
       <p className={`message${notice.error ? ' error' : ''}`} role="status" aria-live="polite">{notice.text}</p>
-      {isAdmin && <BatchSetup users={users} hidden={section !== 'setup'} onCreate={createBatch} onMessage={message} />}
+      {isAdmin && <BatchSetup key={setupVersion} users={users} hidden={section !== 'setup'} onCreate={createBatch} onMessage={message} />}
       {isAdmin && <UsersPage account={account} users={users} hidden={section !== 'users'} onUsersChanged={loadUsers} onAccountChanged={setAccount} />}
-      <section className="section waiting-section" hidden={section !== 'waiting'}><div className="panel waiting-card"><h2>Listo para verificar</h2>{!isAdmin && <PersonalQr />}<p>Cuando la encargada te asigne un lote, aparecerá aquí automáticamente para escanear.</p></div></section>
+      <section className="section waiting-section" hidden={section !== 'waiting'}><div className="panel waiting-card"><h2>Listo para verificar</h2><p>Cuando la encargada te asigne un lote, aparecerá aquí automáticamente con tu QR para abrirlo en el celular.</p></div></section>
       {batch && <><BatchList batch={batch} hidden={section !== 'list'} onMessage={message} onRefresh={refreshBatch}
         onOpenScanner={() => setScanMode('camera')} onPhoto={(file) => { if (file) { setPhoto(file); setScanMode('photo'); } }} />
         {isAdmin && <HistoryView batch={batch} batches={batches} hidden={section !== 'history'} version={historyVersion} onMessage={message} />}
