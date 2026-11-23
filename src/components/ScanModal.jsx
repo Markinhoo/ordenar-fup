@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { rpc } from '../lib/api';
-import { getDocumentWorker, parseScanText } from '../lib/ocr';
+import { readDocumentFields } from '../lib/ocr';
 
 export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMessage }) {
   const videoRef = useRef(null);
@@ -64,12 +64,16 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
     if (reading || !batch || batch.isAdmin) return;
     setReading(true); setResult(null); setStatus('Leyendo procedencia, nivel, folio y fecha…');
     try {
-      const worker = await getDocumentWorker();
-      const { data } = await worker.recognize(image);
-      const parsed = parseScanText(data.text, batch.records);
-      if (data.confidence < 40 || !parsed.procedencia || !parsed.nivel || !parsed.folio || !parsed.documentDate) {
-        setStatus('No se leyeron claramente las cuatro partes del recuadro. Acerca la cámara, mejora la luz y vuelve a intentar.');
-        onMessage(`Lectura incompleta. Texto detectado: ${String(data.text).trim().slice(0, 160) || 'ninguno'}`, true);
+      const parsed = await readDocumentFields(image, batch.records);
+      if (!parsed.procedencia || !parsed.nivel || !parsed.folio || !parsed.documentDate) {
+        const missing = [['procedencia', parsed.procedencia], ['nivel', parsed.nivel], ['folio', parsed.folio], ['fecha', parsed.documentDate]]
+          .filter(([, value]) => !value).map(([field]) => field);
+        setStatus(`No se leyó: ${missing.join(', ')}. Acerca el recuadro completo y vuelve a intentar.`);
+        onMessage(`Lectura incompleta. Texto detectado: ${String(parsed.raw).trim().slice(0, 160) || 'ninguno'}`, true);
+        return;
+      }
+      if (!batch.records.some((record) => String(record.folio).match(/^\d+/)?.[0] === parsed.folio)) {
+        setStatus(`El folio ${parsed.folio} no está en este lote. Comprueba el recuadro o avisa a la encargada.`);
         return;
       }
       setResult(parsed); setStatus('Compara estos datos con el documento físico y confirma si son correctos.');
