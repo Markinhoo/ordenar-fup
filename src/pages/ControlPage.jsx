@@ -191,13 +191,13 @@ export default function ControlPage() {
       {isAdmin && <BatchSetup key={setupVersion} users={users} hidden={section !== 'setup'} onCreate={createBatch} onMessage={message} />}
       {isAdmin && <UsersPage account={account} users={users} hidden={section !== 'users'} onUsersChanged={loadUsers} onAccountChanged={setAccount} />}
       <section className="section waiting-section" hidden={section !== 'waiting'}><div className="panel waiting-card"><h2>Listo para verificar</h2><p>Cuando la encargada te asigne un lote, aparecerá aquí automáticamente con tu QR para abrirlo en el celular.</p></div></section>
-      {batch && <><BatchList batch={batch} hidden={section !== 'list'} onMessage={message} onRefresh={refreshBatch}
+      {batch && <><BatchList batch={batch} account={account} hidden={section !== 'list'} onMessage={message} onRefresh={refreshBatch}
         onOpenScanner={() => setScanMode('camera')} onPhoto={(file) => { if (file) { setPhoto(file); setScanMode('photo'); } }} />
         {isAdmin && <HistoryView batch={batch} batches={batches} hidden={section !== 'history'} version={historyVersion} onMessage={message} />}
       </>}
     </main>}
     {account && <AccountModal account={account} view={accountView} onClose={() => setAccountView(null)} onAccountChanged={setAccount} />}
-    {batch && !batch.isAdmin && <ScanModal batch={batch} mode={scanMode} photo={photo}
+    {batch && <ScanModal batch={batch} mode={scanMode} photo={photo}
       onClose={() => { setScanMode(null); setPhoto(null); }} onRefresh={refreshBatch} onMessage={message} />}
   </div>;
 }

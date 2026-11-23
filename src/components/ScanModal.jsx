@@ -108,7 +108,7 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
   }
 
   async function readImage(image) {
-    if (reading || !batch || batch.isAdmin) return;
+    if (reading || !batch) return;
     setReading(true); setResult(null); setStatus('Leyendo procedencia, nivel, folio y fecha…');
     try {
       const parsed = await readDocumentFields(image, batch.records);
@@ -160,7 +160,7 @@ export default function ScanModal({ batch, mode, photo, onClose, onRefresh, onMe
       const saved = await rpc('v2_scan_document', { p_batch_id: batch.id, p_folio: result.folio,
         p_procedencia: result.procedencia, p_nivel: result.nivel, p_document_date: result.documentDate });
       onMessage(saved.status === 'new' ? `Folio ${saved.folio} revisado por ${saved.checkedBy}.`
-        : `Folio ${saved.folio} revisado nuevamente por ${saved.checkedBy}. Ambas revisiones quedan en la bitácora.`);
+        : `Documento ya escaneado: folio ${saved.folio}. Responsable: ${saved.checkedBy}.`);
       setResult(null); setStatus('Guardado. Coloca el siguiente documento y lee el recuadro.');
       await onRefresh();
       if (mode === 'photo') onClose();

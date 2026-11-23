@@ -157,7 +157,7 @@ Deno.serve(async (request) => {
       const userId = await supabase('/rest/v1/rpc/v10_consume_device_pair', 'POST',
         { p_token: token }, secretKey, 'fup-sep');
       const account = userId && await accountByUser(userId);
-      if (!account || account.role !== 'operador') return reply({ error: 'El QR venció o ya fue usado' }, 403, origin);
+      if (!account || !['operador', 'administrador'].includes(account.role)) return reply({ error: 'El QR venció o ya fue usado' }, 403, origin);
       const link = await supabase('/auth/v1/admin/generate_link', 'POST',
         { type: 'magiclink', email: account.email }, secretKey);
       const hash = link?.hashed_token || link?.properties?.hashed_token;
@@ -185,7 +185,7 @@ Deno.serve(async (request) => {
     if (!account) return reply({ error: 'Cuenta sin autorización FUP' }, 403, origin);
 
     if (input.action === 'issue-device') {
-      if (account.role !== 'operador') return reply({ error: 'Solo operadores pueden abrir el escáner' }, 403, origin);
+      if (!['operador', 'administrador'].includes(account.role)) return reply({ error: 'Cuenta sin acceso FUP' }, 403, origin);
       const token = await supabase('/rest/v1/rpc/v10_issue_device_pair', 'POST',
         {}, user.token, 'fup-sep');
       return reply({ token, expiresIn: 120 }, 200, origin);

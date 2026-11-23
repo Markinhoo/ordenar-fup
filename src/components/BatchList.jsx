@@ -4,7 +4,7 @@ import { exportCsv } from '../lib/download';
 import { qnaLabel } from '../lib/qna';
 import PersonalQr from './PersonalQr';
 
-export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenScanner, onPhoto }) {
+export default function BatchList({ batch, account, hidden, onMessage, onRefresh, onOpenScanner, onPhoto }) {
   const [query, setQuery] = useState('');
   const [pendingOnly, setPendingOnly] = useState(false);
   const people = useMemo(() => new Map(batch.workers.map((worker) => [worker.id, worker.name])), [batch.workers]);
@@ -49,8 +49,8 @@ export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenS
 
   return <section className="section list-section" hidden={hidden}>
     <div className="list-side">
-      {!batch.isAdmin && !hidden && <div className="panel"><PersonalQr batchId={batch.id} name={people.get(batch.myWorkerId)} />
-        <p>Puedes ayudar a revisar folios de otra persona del mismo lote; tu nombre quedará como responsable del escaneo.</p>
+      {!hidden && <div className="panel"><PersonalQr batchId={batch.id} name={account?.name || people.get(batch.myWorkerId)} />
+        <p>Puedes revisar cualquier folio de este lote; tu nombre quedará como responsable del escaneo.</p>
         <button className="primary" type="button" onClick={onOpenScanner}>Abrir cámara</button>
         <label className="photo-button">Tomar foto del recuadro<input type="file" accept="image/*" capture="environment" onChange={(event) => { onPhoto(event.target.files[0]); event.target.value = ''; }} /></label>
       </div>}
@@ -59,7 +59,7 @@ export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenS
         <div>{batch.workers.map((worker) => <div className="worker-progress-row" key={worker.id}><span>{worker.name}</span>
           <b>{batch.records.filter((record) => record.assignedWorkerId === worker.id && record.checkedAt).length} / {worker.target}</b></div>)}</div>
       </div>
-      {batch.isAdmin ? <>
+      {batch.isAdmin && <>
         <div className="panel"><h2>Añadir documento no digital</h2><p>Solo la encargada puede agregarlo. La observación queda en la bitácora.</p>
           <form className="stack-form" onSubmit={addMissing}>
             <input name="folio" placeholder="No. de documento" inputMode="numeric" required />
@@ -72,7 +72,7 @@ export default function BatchList({ batch, hidden, onMessage, onRefresh, onOpenS
             <button className="primary">Añadir y registrar</button>
           </form>
         </div>
-      </> : null}
+      </>}
     </div>
     <div className="panel records-panel">
       <div className="panel-heading"><div><h2>Listado por RFC</h2><p>{visible.length} de {total} registros · orden RFC</p></div>
