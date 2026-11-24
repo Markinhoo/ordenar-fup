@@ -50,19 +50,23 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
       const image = capture();
       if (!image) return;
       busyRef.current = true;
+      setStatus('Leyendo procedencia, nivel, folio y fecha…');
       try {
         const parsed = await readDocumentFields(image, batch.records);
         if (!parsed.procedencia || !parsed.nivel || !parsed.folio || !parsed.documentDate) {
+          const missing = [['procedencia', parsed.procedencia], ['nivel', parsed.nivel], ['folio', parsed.folio], ['fecha', parsed.documentDate]]
+            .filter(([, value]) => !value).map(([field]) => field);
+          setStatus(`No se leyó ${missing.join(', ')}. Acerca el recuadro y llena la guía.`);
           candidateRef.current = { signature: '', count: 0 }; return;
         }
-        const signature = [parsed.procedencia, parsed.nivel, parsed.folio, parsed.documentDate].join('|');
+        const signature = [parsed.folio, parsed.documentDate].join('|');
         candidateRef.current = candidateRef.current.signature === signature
           ? { signature, count: candidateRef.current.count + 1 } : { signature, count: 1 };
         if (candidateRef.current.count < 2) { setStatus('Confirmando la lectura del recuadro…'); return; }
         if (parsed.folio === seenFolioRef.current) return;
-        seenFolioRef.current = parsed.folio;
         const record = batch.records.find((item) => String(item.folio).match(/^\d+/)?.[0] === parsed.folio);
         if (!record) { setSignal('error'); setStatus(`Folio ${parsed.folio} no está en este lote.`); return; }
+        seenFolioRef.current = parsed.folio;
         if (record.checkedAt) {
           setSignal('duplicate'); setStatus(`Documento ya escaneado: ${parsed.folio}`);
           clearTimeout(signalTimerRef.current);
@@ -142,19 +146,24 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
     const video = videoRef.current;
     const guide = guideRef.current;
     if (!video?.videoWidth || !guide) return null;
-    const frame = video.getBoundingClientRect();
-    const target = guide.getBoundingClientRect();
-    const scale = Math.max(frame.width / video.videoWidth, frame.height / video.videoHeight);
+    const frameWidth = video.clientWidth;
+    const frameHeight = video.clientHeight;
+    const targetWidth = guide.offsetWidth;
+    const targetHeight = guide.offsetHeight;
+    const targetLeft = guide.offsetLeft;
+    const targetTop = guide.offsetTop - targetHeight / 2;
+    if (!frameWidth || !frameHeight || !targetWidth || !targetHeight) return null;
+    const scale = Math.max(frameWidth / video.videoWidth, frameHeight / video.videoHeight);
     const drawnWidth = video.videoWidth * scale;
     const drawnHeight = video.videoHeight * scale;
-    const offsetX = (frame.width - drawnWidth) / 2;
-    const offsetY = (frame.height - drawnHeight) / 2;
-    const padX = target.width * .02;
-    const padY = target.height * .06;
-    const left = Math.max(0, (target.left - frame.left - offsetX - padX) / scale);
-    const top = Math.max(0, (target.top - frame.top - offsetY - padY) / scale);
-    const right = Math.min(video.videoWidth, (target.right - frame.left - offsetX + padX) / scale);
-    const bottom = Math.min(video.videoHeight, (target.bottom - frame.top - offsetY + padY) / scale);
+    const offsetX = (frameWidth - drawnWidth) / 2;
+    const offsetY = (frameHeight - drawnHeight) / 2;
+    const padX = targetWidth * .04;
+    const padY = targetHeight * .08;
+    const left = Math.max(0, (targetLeft - offsetX - padX) / scale);
+    const top = Math.max(0, (targetTop - offsetY - padY) / scale);
+    const right = Math.min(video.videoWidth, (targetLeft + targetWidth - offsetX + padX) / scale);
+    const bottom = Math.min(video.videoHeight, (targetTop + targetHeight - offsetY + padY) / scale);
     const width = right - left;
     const height = bottom - top;
     if (width < 1 || height < 1) return null;

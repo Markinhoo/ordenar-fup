@@ -1,10 +1,16 @@
 let documentWorker;
 let folioWorker;
 
+function localOcrOptions() {
+  const assetPath = new URL('/ocr/', location.origin).href.replace(/\/$/, '');
+  return { workerPath: `${assetPath}/worker.min.js`, corePath: assetPath,
+    langPath: assetPath, workerBlobURL: false };
+}
+
 export async function getDocumentWorker() {
   if (!documentWorker) {
     const Tesseract = await import('tesseract.js');
-    documentWorker = await Tesseract.createWorker('eng');
+    documentWorker = await Tesseract.createWorker('eng', 1, localOcrOptions());
     await documentWorker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
   }
   return documentWorker;
@@ -13,7 +19,7 @@ export async function getDocumentWorker() {
 export async function getFolioWorker() {
   if (!folioWorker) {
     const Tesseract = await import('tesseract.js');
-    folioWorker = await Tesseract.createWorker('eng');
+    folioWorker = await Tesseract.createWorker('eng', 1, localOcrOptions());
     await folioWorker.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
   }
   return folioWorker;
@@ -40,7 +46,7 @@ function findFolio(raw, records = []) {
 
 function findLevel(raw) {
   const excluded = new Set(['PROCEDENCIA', 'NO', 'DE', 'DEL', 'DOCUMENTO', 'FECHA', 'ESTATAL', 'FEDERAL', 'MUNICIPAL']);
-  return (String(raw || '').toUpperCase().match(/\b[A-ZÁÉÍÓÚÑ]{2,20}\b/g) || [])
+  return (String(raw || '').toUpperCase().match(/\b[A-ZÁÉÍÓÚÑ]{3,20}\b/g) || [])
     .filter((word) => !excluded.has(word)).at(-1) || '';
 }
 
@@ -54,16 +60,16 @@ export function parseScanText(raw, records = []) {
   const procedencia = sourceLine.match(/\b(ESTATAL|FEDERAL|MUNICIPAL)\b/)?.[0]
     || text.match(/\b(ESTATAL|FEDERAL|MUNICIPAL)\b/)?.[0] || '';
   const documentLine = lines.findIndex((line) => /DOCUMENTO/.test(line));
-  const nearby = documentLine >= 0 ? lines.slice(Math.max(0, documentLine - 2), documentLine + 2).join(' ') : lines.join(' ');
+  const nearby = documentLine >= 0 ? lines.slice(documentLine, documentLine + 2).join(' ') : '';
   const nivel = findLevel(nearby);
   return { procedencia, nivel, folio, documentDate, raw: text };
 }
 
 const regions = {
-  procedencia: [.60, .02, .38, .34],
-  nivel: [.60, .30, .38, .27],
-  folio: [.60, .48, .38, .27],
-  documentDate: [.60, .70, .38, .29],
+  procedencia: [.50, .03, .48, .32],
+  nivel: [.50, .30, .48, .28],
+  folio: [.50, .31, .48, .43],
+  documentDate: [.50, .68, .48, .30],
 };
 
 function cropRegion(bitmap, [left, top, width, height]) {
@@ -73,7 +79,7 @@ function cropRegion(bitmap, [left, top, width, height]) {
   canvas.width = Math.max(1, sourceWidth * 2);
   canvas.height = Math.max(1, sourceHeight * 2);
   const context = canvas.getContext('2d');
-  context.filter = 'grayscale(1) contrast(1.5)';
+  context.filter = 'grayscale(1) contrast(1.15)';
   context.drawImage(bitmap, Math.round(bitmap.width * left), Math.round(bitmap.height * top),
     sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
   return canvas;
@@ -87,26 +93,37 @@ export async function readDocumentFields(image, records = []) {
   catch { const { data } = await worker.recognize(image); return parseScanText(data.text, records); }
   const parts = {};
   try {
-    await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE });
-    for (const [key, area] of Object.entries(regions)) {
-      const { data } = await worker.recognize(cropRegion(bitmap, area));
-      parts[key] = data.text.trim();
+    await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
+    const { data } = await worker.recognize(image);
+    const full = parseScanText(data.text, records);
+    await worker.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE });
+    const folioRead = await worker.recognize(cropRegion(bitmap, regions.folio));
+    parts.folio = folioRead.data.text.trim();
+    const targetFolio = findFolio(parts.folio, records);
+    const knownFolio = [targetFolio, full.folio].find((folio) => records.some((record) =>
+      String(record.folio).match(/^\d+/)?.[0] === folio));
+    let result = { ...full, folio: knownFolio || targetFolio || full.folio };
+    if (!result.procedencia || !result.nivel || !result.documentDate) {
+      await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE });
+      if (!result.procedencia) {
+        const sourceRead = await worker.recognize(cropRegion(bitmap, regions.procedencia));
+        parts.procedencia = sourceRead.data.text.trim();
+        result.procedencia = parts.procedencia.match(/\b(ESTATAL|FEDERAL|MUNICIPAL)\b/i)?.[0]?.toUpperCase() || '';
+      }
+      if (!result.nivel) {
+        const levelRead = await worker.recognize(cropRegion(bitmap, regions.nivel));
+        parts.nivel = levelRead.data.text.trim();
+        result.nivel = findLevel(parts.nivel);
+      }
+      if (!result.documentDate) {
+        const dateRead = await worker.recognize(cropRegion(bitmap, regions.documentDate));
+        parts.documentDate = dateRead.data.text.trim();
+        result.documentDate = parseDate(parts.documentDate);
+      }
     }
+    return { ...result, raw: [data.text, ...Object.values(parts)].filter(Boolean).join(' | ') };
   } finally {
     bitmap.close?.();
-    await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
+    await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
   }
-  const structured = {
-    procedencia: parts.procedencia.match(/\b(ESTATAL|FEDERAL|MUNICIPAL)\b/i)?.[0]?.toUpperCase() || '',
-    nivel: findLevel(parts.nivel),
-    folio: findFolio(parts.folio, records),
-    documentDate: parseDate(parts.documentDate),
-    raw: Object.values(parts).join(' | '),
-  };
-  if (structured.procedencia && structured.nivel && structured.folio && structured.documentDate) return structured;
-  const { data } = await worker.recognize(image);
-  const full = parseScanText(data.text, records);
-  return { procedencia: structured.procedencia || full.procedencia,
-    nivel: structured.nivel || full.nivel, folio: structured.folio || full.folio,
-    documentDate: structured.documentDate || full.documentDate, raw: `${structured.raw} | ${full.raw}` };
 }

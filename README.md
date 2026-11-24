@@ -67,4 +67,6 @@ La descarga del Excel alfabetizado tiene una casilla **Con colores**. Sin marcar
 
 El QR incluye `scan=1` y abre únicamente el escáner del lote indicado. Entrar por la liga normal abre el sistema completo. La vista del QR ocupa toda la pantalla del sitio e intenta activar el modo horizontal; si el navegador no lo permite automáticamente, el botón **Pantalla completa horizontal** lo solicita mediante un toque. `supabase/fup-sep-v13.sql` actualiza el disparador de la bitácora para aceptar escaneos de operadores y administradores con acceso al lote.
 
-El escáner lee automáticamente el recuadro y espera dos lecturas iguales antes de registrar. Muestra una palomita verde al guardar. `supabase/fup-sep-v11.sql` impide que un folio ya registrado cambie de responsable: un nuevo intento muestra **Documento ya escaneado**.
+El escáner lee automáticamente el recuadro y confirma dos lecturas con el mismo folio y fecha antes de registrar. Muestra una palomita verde al guardar. `supabase/fup-sep-v11.sql` impide que un folio ya registrado cambie de responsable: un nuevo intento muestra **Documento ya escaneado**.
+
+El motor, el modelo inglés y los archivos WebAssembly de Tesseract se sirven desde `public/ocr/` para evitar descargas desde un CDN en el celular. El OCR lee primero el recuadro completo y después reconoce la zona del folio solo como dígitos; si falta otro campo, vuelve a leer su zona. La pantalla indica cuál campo falta para ajustar la distancia de la cámara.
