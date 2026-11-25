@@ -44,12 +44,18 @@ function findFolio(raw, records = []) {
   return known.length === 1 ? known[0] : numbers.length === 1 ? numbers[0] : null;
 }
 
-// Exact document labels confirmed from the supplied FUP samples.
-// Never guess a level from arbitrary OCR words or fuzzy-match it to ADGE.
+// Authorized document levels. Do not guess from arbitrary OCR words.
+export const DOCUMENT_LEVELS = ['PREE', 'PRIMARIAE', 'SECUNDARIA', 'BASICA B', 'ADGE', 'FISICAE', 'PREPARATORIA'];
 export function findLevel(raw) {
-  const words = String(raw || '').toUpperCase().match(/\b[A-ZÁÉÍÓÚÑ]{3,30}\b/g) || [];
-  const matches = [...new Set(words.filter((word) => ['ADGE', 'PREPARATOR'].includes(word)))];
+  const text = String(raw || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ');
+  const matches = DOCUMENT_LEVELS.filter((level) => new RegExp('\\b' + level + '\\b').test(text));
   return matches.length === 1 ? matches[0] : '';
+}
+
+export function confidentLevel(data) {
+  const level = findLevel(data.text);
+  const confidentText = (data.words || []).map((word) => word.confidence >= 75 ? word.text : '?').join(' ');
+  return level && findLevel(confidentText) === level ? level : '';
 }
 
 export function parseScanText(raw, records = []) {
@@ -122,10 +128,7 @@ export async function readDocumentFields(image, records = []) {
       if (!result.nivel) {
         const levelRead = await worker.recognize(cropRegion(bitmap, regions.nivel));
         parts.nivel = levelRead.data.text.trim();
-        const level = findLevel(parts.nivel);
-        const words = levelRead.data.words || [];
-        const confident = words.some((word) => findLevel(word.text) === level && word.confidence >= 75);
-        result.nivel = level && confident ? level : '';
+        result.nivel = confidentLevel(levelRead.data);
       }
       if (!result.documentDate) {
         const dateRead = await worker.recognize(cropRegion(bitmap, regions.documentDate));
