@@ -44,10 +44,12 @@ function findFolio(raw, records = []) {
   return known.length === 1 ? known[0] : numbers.length === 1 ? numbers[0] : null;
 }
 
-function findLevel(raw) {
-  const excluded = new Set(['PROCEDENCIA', 'NO', 'DE', 'DEL', 'DOCUMENTO', 'FECHA', 'ESTATAL', 'FEDERAL', 'MUNICIPAL']);
-  return (String(raw || '').toUpperCase().match(/\b[A-ZÁÉÍÓÚÑ]{3,20}\b/g) || [])
-    .filter((word) => !excluded.has(word)).at(-1) || '';
+// Exact document labels confirmed from the supplied FUP samples.
+// Never guess a level from arbitrary OCR words or fuzzy-match it to ADGE.
+export function findLevel(raw) {
+  const words = String(raw || '').toUpperCase().match(/\b[A-ZÁÉÍÓÚÑ]{3,30}\b/g) || [];
+  const matches = [...new Set(words.filter((word) => ['ADGE', 'PREPARATOR'].includes(word)))];
+  return matches.length === 1 ? matches[0] : '';
 }
 
 export function parseScanText(raw, records = []) {
@@ -67,7 +69,7 @@ export function parseScanText(raw, records = []) {
 
 const regions = {
   procedencia: [.50, .03, .48, .32],
-  nivel: [.50, .30, .48, .28],
+  nivel: [.50, .30, .48, .25],
   folio: [.50, .31, .48, .43],
   documentDate: [.50, .68, .48, .30],
 };
@@ -108,7 +110,8 @@ export async function readDocumentFields(image, records = []) {
     const targetFolio = findFolio(parts.folio, records);
     const knownFolio = [targetFolio, full.folio].find((folio) => records.some((record) =>
       String(record.folio).match(/^\d+/)?.[0] === folio));
-    let result = { ...full, folio: knownFolio || targetFolio || full.folio };
+    // Only the level cell may supply nivel; ignore full-page label fragments.
+    let result = { ...full, nivel: '', folio: knownFolio || targetFolio || full.folio };
     if (!result.procedencia || !result.nivel || !result.documentDate) {
       await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE });
       if (!result.procedencia) {
@@ -119,7 +122,10 @@ export async function readDocumentFields(image, records = []) {
       if (!result.nivel) {
         const levelRead = await worker.recognize(cropRegion(bitmap, regions.nivel));
         parts.nivel = levelRead.data.text.trim();
-        result.nivel = findLevel(parts.nivel);
+        const level = findLevel(parts.nivel);
+        const words = levelRead.data.words || [];
+        const confident = words.some((word) => findLevel(word.text) === level && word.confidence >= 75);
+        result.nivel = level && confident ? level : '';
       }
       if (!result.documentDate) {
         const dateRead = await worker.recognize(cropRegion(bitmap, regions.documentDate));

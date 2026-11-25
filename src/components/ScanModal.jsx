@@ -57,7 +57,7 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
         if (!parsed.folio) { fieldsRef.current = { folio: '', values: {} }; setStatus('Acerca el folio a la guía y mantén firme el documento.'); return; }
         if (fieldsRef.current.folio !== parsed.folio) fieldsRef.current = { folio: parsed.folio, values: {} };
         const accumulated = fieldsRef.current;
-        for (const field of ['procedencia', 'nivel', 'documentDate']) {
+        for (const field of ['procedencia', 'documentDate']) {
           if (parsed[field]) accumulated.values[field] = parsed[field];
           else parsed[field] = accumulated.values[field] || '';
         }
@@ -67,7 +67,7 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
           setStatus(`Folio ${parsed.folio} detectado. Leyendo ${missing.join(', ')}; mantén el documento en la guía.`);
           candidateRef.current = { signature: '', count: 0 }; return;
         }
-        const signature = [parsed.folio, parsed.documentDate].join('|');
+        const signature = [parsed.folio, parsed.nivel, parsed.documentDate].join('|');
         candidateRef.current = candidateRef.current.signature === signature
           ? { signature, count: candidateRef.current.count + 1 } : { signature, count: 1 };
         if (candidateRef.current.count < 2) { setStatus('Confirmando la lectura del recuadro…'); return; }
