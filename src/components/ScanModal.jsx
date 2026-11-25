@@ -3,6 +3,8 @@ import { rpc } from '../lib/api';
 import { readDocumentFields, getDocumentWorker } from '../lib/ocr';
 
 export default function ScanModal({ batch, mode, photo, standalone = false, onClose, onRefresh, onMessage }) {
+  const batchRef = useRef(batch);
+  batchRef.current = batch;
   const videoRef = useRef(null);
   const guideRef = useRef(null);
   const modalRef = useRef(null);
@@ -16,7 +18,7 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
   const [result, setResult] = useState(null);
   const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState('Alinea todo el recuadro dentro de la guía.');
+  const [status, setStatus] = useState('Alinea el recuadro completo; solo se leerá la columna derecha.');
 
   useEffect(() => {
     if (mode !== 'camera') return;
@@ -29,7 +31,7 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
         streamRef.current = stream;
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
-        setStatus('Alinea las tres filas del recuadro dentro de la guía.');
+        setStatus('Alinea el recuadro completo; solo se leerá la columna derecha.');
       } catch (error) {
         onMessage(error?.name === 'NotAllowedError' ? 'La cámara no tiene permiso. Actívalo o usa «Tomar foto del recuadro».'
           : 'No se pudo abrir la cámara. Usa «Tomar foto del recuadro».', true);
@@ -51,6 +53,7 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
     let timer;
     let nextDelay = 120;
     async function scan() {
+      const batch = batchRef.current;
       if (busyRef.current || !streamRef.current || document.hidden) return;
       const image = capture();
       if (!image) return;
@@ -109,7 +112,7 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
     }
     timer = setTimeout(tick, 0);
     return () => { active = false; clearTimeout(timer); };
-  }, [mode, batch]);
+  }, [mode, batch?.id]);
   useEffect(() => () => {
     if (document.fullscreenElement === modalRef.current) {
       screen.orientation?.unlock?.();

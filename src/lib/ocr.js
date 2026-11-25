@@ -82,6 +82,15 @@ export function parseScanText(raw, records = []) {
   return { procedencia, nivel, folio, documentDate, raw: text };
 }
 
+// Value column, top to bottom: source, level, folio, date. No labels needed.
+export function parseValueColumn(raw, records = []) {
+  const text = String(raw || '').toUpperCase();
+  const documentDate = parseDate(text);
+  const withoutDate = text.replace(/(?:19|20)\d{2}\s*[/.\-]?\s*\d{2}\s*[/.\-]?\s*\d{2}/g, ' ');
+  return { procedencia: text.match(/\b(ESTATAL|FEDERAL|MUNICIPAL)\b/)?.[0] || '',
+    nivel: findLevel(text), folio: findFolio(withoutDate, records), documentDate, raw: text };
+}
+
 const regions = {
   procedencia: [.50, .03, .48, .32],
   nivel: [.50, .30, .48, .25],
@@ -107,13 +116,13 @@ export async function readDocumentFields(image, records = [], previous = null) {
   const Tesseract = await import('tesseract.js');
   let bitmap;
   try { bitmap = await createImageBitmap(image); }
-  catch { const { data } = await worker.recognize(image); return parseScanText(data.text, records); }
+  catch { throw new Error('No se pudo preparar la imagen de la cámara. Cierra y abre el escáner.'); }
   const parts = {};
   try {
     await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
-    // Most frames need only the value column; retain the full-frame fallback.
-    const column = await worker.recognize(cropRegion(bitmap, [.46, .02, .54, .96]));
-    const result = parseScanText(column.data.text, records);
+    // Read only the right-hand values; never send left-hand labels to OCR.
+    const column = await worker.recognize(cropRegion(bitmap, [.50, .02, .50, .96]));
+    const result = parseValueColumn(column.data.text, records);
     const levelReadings = [column.data];
     result.nivel = selectLevel(levelReadings);
     let data = column.data;
@@ -133,8 +142,9 @@ export async function readDocumentFields(image, records = [], previous = null) {
     }
     if (!result.procedencia || !result.documentDate || !isKnown(result.folio)) {
       await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
-      data = (await worker.recognize(image)).data;
-      const full = parseScanText(data.text, records);
+      await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK });
+      data = (await worker.recognize(cropRegion(bitmap, [.50, .02, .50, .96]))).data;
+      const full = parseValueColumn(data.text, records);
       for (const field of ['procedencia', 'documentDate']) result[field] ||= full[field];
       if (!isKnown(result.folio) && full.folio) result.folio = full.folio;
     }
@@ -147,7 +157,7 @@ export async function readDocumentFields(image, records = [], previous = null) {
       }
       if (!result.nivel) {
         await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
-        const levelRead = await worker.recognize(cropRegion(bitmap, [.48, .23, .52, .43]));
+        const levelRead = await worker.recognize(cropRegion(bitmap, [.50, .23, .50, .43]));
         levelReadings.push(levelRead.data);
         parts.nivel = levelRead.data.text.trim();
         result.nivel = selectLevel(levelReadings);

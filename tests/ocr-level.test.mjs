@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 const source = await readFile(new URL('../src/lib/ocr.js', import.meta.url), 'utf8');
-const { findLevel, parseScanText, confidentLevel, DOCUMENT_LEVELS, selectLevel } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+const { findLevel, parseScanText, confidentLevel, DOCUMENT_LEVELS, selectLevel, parseValueColumn } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 test('rejects corrupted document labels rather than storing them as levels', () => {
   for (const value of ['OEOOOMEM', 'OEOOOMEM DOCUMENTO', 'DOCUMENTO', 'AD6E', '']) assert.equal(findLevel(value), '');
 });
@@ -34,4 +34,11 @@ test('accepts agreeing exact levels from two crops despite low OCR confidence', 
  assert.equal(selectLevel([reading, reading]), 'ADGE');
  assert.equal(selectLevel([reading, {text: 'PREE'}]), '');
  assert.equal(selectLevel([{text:'OEOOOMEM'}, {text:'OEOOOMEM'}]), '');
+});
+
+test('reads four ordered values without labels and does not mistake date for folio', () => {
+ const result = parseValueColumn('ESTATAL\nBASICA B\n42111\n2025 / 06 / 03');
+ assert.equal(result.procedencia, 'ESTATAL'); assert.equal(result.nivel, 'BASICA B');
+ assert.equal(result.folio, '42111'); assert.equal(result.documentDate, '2025-06-03');
+ assert.equal(parseValueColumn('ESTATAL\nADGE\n2025 / 06 / 03').folio, null);
 });
