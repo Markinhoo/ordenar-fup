@@ -11,6 +11,7 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
   const seenFolioRef = useRef('');
   const candidateRef = useRef({ signature: '', count: 0 });
   const signalTimerRef = useRef(null);
+  const fieldsRef = useRef({ folio: '', values: {} });
   const [signal, setSignal] = useState('scanning');
   const [result, setResult] = useState(null);
   const [reading, setReading] = useState(false);
@@ -53,17 +54,24 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
       setStatus('Leyendo procedencia, nivel, folio y fecha…');
       try {
         const parsed = await readDocumentFields(image, batch.records);
+        if (!parsed.folio) { fieldsRef.current = { folio: '', values: {} }; setStatus('Acerca el folio a la guía y mantén firme el documento.'); return; }
+        if (fieldsRef.current.folio !== parsed.folio) fieldsRef.current = { folio: parsed.folio, values: {} };
+        const accumulated = fieldsRef.current;
+        for (const field of ['procedencia', 'nivel', 'documentDate']) {
+          if (parsed[field]) accumulated.values[field] = parsed[field];
+          else parsed[field] = accumulated.values[field] || '';
+        }
         if (!parsed.procedencia || !parsed.nivel || !parsed.folio || !parsed.documentDate) {
           const missing = [['procedencia', parsed.procedencia], ['nivel', parsed.nivel], ['folio', parsed.folio], ['fecha', parsed.documentDate]]
             .filter(([, value]) => !value).map(([field]) => field);
-          setStatus(`No se leyó ${missing.join(', ')}. Acerca el recuadro y llena la guía.`);
+          setStatus(`Folio ${parsed.folio} detectado. Leyendo ${missing.join(', ')}; mantén el documento en la guía.`);
           candidateRef.current = { signature: '', count: 0 }; return;
         }
         const signature = [parsed.folio, parsed.documentDate].join('|');
         candidateRef.current = candidateRef.current.signature === signature
           ? { signature, count: candidateRef.current.count + 1 } : { signature, count: 1 };
         if (candidateRef.current.count < 2) { setStatus('Confirmando la lectura del recuadro…'); return; }
-        if (parsed.folio === seenFolioRef.current) return;
+        if (parsed.folio === seenFolioRef.current) { setStatus(`Documento ya escaneado: ${parsed.folio}`); return; }
         const record = batch.records.find((item) => String(item.folio).match(/^\d+/)?.[0] === parsed.folio);
         if (!record) { setSignal('error'); setStatus(`Folio ${parsed.folio} no está en este lote.`); return; }
         seenFolioRef.current = parsed.folio;
@@ -99,7 +107,7 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
     if (mode !== 'camera' || !standalone) return;
     const frame = requestAnimationFrame(() => {
       modalRef.current?.requestFullscreen?.()
-        .then(() => screen.orientation?.lock?.('landscape')?.catch?.(() => {}))
+        .then(() => screen.orientation?.lock?.('landscape-primary')?.catch?.(() => {}))
         .catch(() => {});
     });
     return () => cancelAnimationFrame(frame);
@@ -113,7 +121,7 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
     try {
       await modalRef.current.requestFullscreen();
       if (screen.orientation?.lock) {
-        await screen.orientation.lock('landscape');
+        await screen.orientation.lock('landscape-primary');
         setStatus('Coloca las tres filas dentro de la guía. La lectura se hará automáticamente.');
       } else setStatus('Gira el celular a horizontal para ampliar la cámara.');
     } catch {
@@ -150,8 +158,9 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
     const frameHeight = video.clientHeight;
     const targetWidth = guide.offsetWidth;
     const targetHeight = guide.offsetHeight;
-    const targetLeft = guide.offsetLeft;
-    const targetTop = guide.offsetTop - targetHeight / 2;
+    const transform = new DOMMatrixReadOnly(getComputedStyle(guide).transform);
+    const targetLeft = guide.offsetLeft + transform.m41;
+    const targetTop = guide.offsetTop + transform.m42;
     if (!frameWidth || !frameHeight || !targetWidth || !targetHeight) return null;
     const scale = Math.max(frameWidth / video.videoWidth, frameHeight / video.videoHeight);
     const drawnWidth = video.videoWidth * scale;

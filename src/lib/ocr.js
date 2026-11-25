@@ -60,7 +60,7 @@ export function parseScanText(raw, records = []) {
   const procedencia = sourceLine.match(/\b(ESTATAL|FEDERAL|MUNICIPAL)\b/)?.[0]
     || text.match(/\b(ESTATAL|FEDERAL|MUNICIPAL)\b/)?.[0] || '';
   const documentLine = lines.findIndex((line) => /DOCUMENTO/.test(line));
-  const nearby = documentLine >= 0 ? lines.slice(documentLine, documentLine + 2).join(' ') : '';
+  const nearby = documentLine >= 0 ? lines.slice(Math.max(0, documentLine - 1), documentLine + 3).join(' ') : lines.filter((line) => !/PROCEDENCIA|FECHA|ESTATAL|FEDERAL|MUNICIPAL/.test(line)).join(' ');
   const nivel = findLevel(nearby);
   return { procedencia, nivel, folio, documentDate, raw: text };
 }
@@ -96,7 +96,13 @@ export async function readDocumentFields(image, records = []) {
     await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
     const { data } = await worker.recognize(image);
     const full = parseScanText(data.text, records);
-    await worker.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE });
+    // Level and folio are two lines in the same cell; read the entire value column.
+    const column = await worker.recognize(cropRegion(bitmap, [.46, .02, .54, .96]));
+    const columnFields = parseScanText(column.data.text, records);
+    for (const field of ['procedencia', 'nivel', 'folio', 'documentDate']) {
+      if (!full[field]) full[field] = columnFields[field];
+    }
+    await worker.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
     const folioRead = await worker.recognize(cropRegion(bitmap, regions.folio));
     parts.folio = folioRead.data.text.trim();
     const targetFolio = findFolio(parts.folio, records);
