@@ -1,4 +1,5 @@
 let documentWorker;
+let documentWorkerPending;
 let folioWorker;
 
 function localOcrOptions() {
@@ -8,12 +9,13 @@ function localOcrOptions() {
 }
 
 export async function getDocumentWorker() {
-  if (!documentWorker) {
+  if (!documentWorkerPending) documentWorkerPending = (async () => {
     const Tesseract = await import('tesseract.js');
     documentWorker = await Tesseract.createWorker('eng', 1, localOcrOptions());
     await documentWorker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
-  }
-  return documentWorker;
+    return documentWorker;
+  })().catch((error) => { documentWorkerPending = null; throw error; });
+  return documentWorkerPending;
 }
 
 export async function getFolioWorker() {
@@ -100,7 +102,7 @@ function cropRegion(bitmap, [left, top, width, height]) {
   return canvas;
 }
 
-export async function readDocumentFields(image, records = []) {
+export async function readDocumentFields(image, records = [], previous = null) {
   const worker = await getDocumentWorker();
   const Tesseract = await import('tesseract.js');
   let bitmap;
@@ -109,23 +111,33 @@ export async function readDocumentFields(image, records = []) {
   const parts = {};
   try {
     await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
-    const { data } = await worker.recognize(image);
-    const full = parseScanText(data.text, records);
-    // Level and folio are two lines in the same cell; read the entire value column.
+    // Most frames need only the value column; retain the full-frame fallback.
     const column = await worker.recognize(cropRegion(bitmap, [.46, .02, .54, .96]));
-    const columnFields = parseScanText(column.data.text, records);
-    for (const field of ['procedencia', 'nivel', 'folio', 'documentDate']) {
-      if (!full[field]) full[field] = columnFields[field];
-    }
-    await worker.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
-    const folioRead = await worker.recognize(cropRegion(bitmap, regions.folio));
-    parts.folio = folioRead.data.text.trim();
-    const targetFolio = findFolio(parts.folio, records);
-    const knownFolio = [targetFolio, full.folio].find((folio) => records.some((record) =>
-      String(record.folio).match(/^\d+/)?.[0] === folio));
-    // The right column excludes the document labels and accommodates different framing.
+    const result = parseScanText(column.data.text, records);
     const levelReadings = [column.data];
-    let result = { ...full, nivel: selectLevel(levelReadings), folio: knownFolio || targetFolio || full.folio };
+    result.nivel = selectLevel(levelReadings);
+    let data = column.data;
+    const isKnown = (folio) => records.some((record) => String(record.folio).match(/^\d+/)?.[0] === folio);
+    if (!isKnown(result.folio)) {
+      await worker.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
+      const folioRead = await worker.recognize(cropRegion(bitmap, regions.folio));
+      parts.folio = folioRead.data.text.trim();
+      const target = findFolio(parts.folio, records);
+      if (target) result.folio = target;
+    }
+    if (previous && isKnown(result.folio) && records.some((record) => String(record.folio).match(/^\d+/)?.[0] === result.folio && record.checkedAt)) {
+      return { ...result, alreadyScanned: true };
+    }
+    if (isKnown(result.folio) && previous?.folio === result.folio) {
+      for (const field of ['procedencia', 'documentDate']) result[field] ||= previous.values[field] || '';
+    }
+    if (!result.procedencia || !result.documentDate || !isKnown(result.folio)) {
+      await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
+      data = (await worker.recognize(image)).data;
+      const full = parseScanText(data.text, records);
+      for (const field of ['procedencia', 'documentDate']) result[field] ||= full[field];
+      if (!isKnown(result.folio) && full.folio) result.folio = full.folio;
+    }
     if (!result.procedencia || !result.nivel || !result.documentDate) {
       await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE });
       if (!result.procedencia) {

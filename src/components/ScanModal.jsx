@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { rpc } from '../lib/api';
-import { readDocumentFields } from '../lib/ocr';
+import { readDocumentFields, getDocumentWorker } from '../lib/ocr';
 
 export default function ScanModal({ batch, mode, photo, standalone = false, onClose, onRefresh, onMessage }) {
   const videoRef = useRef(null);
@@ -36,6 +36,7 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
         onClose();
       }
     }
+    getDocumentWorker().catch(() => {});
     start();
     return () => { active = false; videoRef.current?.pause(); if (videoRef.current) videoRef.current.srcObject = null;
       streamRef.current?.getTracks().forEach((track) => track.stop()); streamRef.current = null; };
@@ -46,15 +47,21 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
   useEffect(() => () => clearTimeout(signalTimerRef.current), []);
   useEffect(() => {
     if (mode !== 'camera') return;
-    const timer = setInterval(async () => {
+    let active = true;
+    let timer;
+    let nextDelay = 120;
+    async function scan() {
       if (busyRef.current || !streamRef.current || document.hidden) return;
       const image = capture();
       if (!image) return;
       busyRef.current = true;
       setStatus('Leyendo procedencia, nivel, folio y fecha…');
       try {
-        const parsed = await readDocumentFields(image, batch.records);
-        if (!parsed.folio) { fieldsRef.current = { folio: '', values: {} }; setStatus('Acerca el folio a la guía y mantén firme el documento.'); return; }
+        const parsed = await readDocumentFields(image, batch.records, fieldsRef.current);
+        if (!active) return;
+        if (parsed.alreadyScanned) { setSignal('duplicate'); setStatus(`Documento ya escaneado: ${parsed.folio}`); nextDelay = 900; return; }
+        setSignal('scanning');
+        if (!parsed.folio) { candidateRef.current = { signature: '', count: 0 }; fieldsRef.current = { folio: '', values: {} }; setStatus('Acerca el folio a la guía y mantén firme el documento.'); return; }
         if (fieldsRef.current.folio !== parsed.folio) fieldsRef.current = { folio: parsed.folio, values: {} };
         const accumulated = fieldsRef.current;
         for (const field of ['procedencia', 'documentDate']) {
@@ -90,11 +97,18 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
         }
         clearTimeout(signalTimerRef.current);
         signalTimerRef.current = setTimeout(() => setSignal('scanning'), 2000);
+        nextDelay = 1200;
         await onRefresh();
       } catch (error) { setSignal('error'); setStatus(error.message); seenFolioRef.current = ''; }
       finally { busyRef.current = false; }
-    }, 1600);
-    return () => clearInterval(timer);
+    }
+    async function tick() {
+      nextDelay = 120;
+      try { await scan(); }
+      finally { if (active) timer = setTimeout(tick, nextDelay); }
+    }
+    timer = setTimeout(tick, 0);
+    return () => { active = false; clearTimeout(timer); };
   }, [mode, batch]);
   useEffect(() => () => {
     if (document.fullscreenElement === modalRef.current) {
