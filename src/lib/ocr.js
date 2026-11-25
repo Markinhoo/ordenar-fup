@@ -58,6 +58,13 @@ export function confidentLevel(data) {
   return level && findLevel(confidentText) === level ? level : '';
 }
 
+export function selectLevel(readings) {
+  const levels = readings.map((data) => findLevel(data.text)).filter(Boolean);
+  const unique = [...new Set(levels)];
+  if (unique.length !== 1) return '';
+  return levels.length >= 2 || readings.some((data) => confidentLevel(data) === unique[0]) ? unique[0] : '';
+}
+
 export function parseScanText(raw, records = []) {
   const text = String(raw || '').toUpperCase().replace(/\r/g, '');
   const lines = text.split('\n').map((line) => line.replace(/[^A-Z0-9ÁÉÍÓÚÑ/.: -]/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
@@ -116,8 +123,9 @@ export async function readDocumentFields(image, records = []) {
     const targetFolio = findFolio(parts.folio, records);
     const knownFolio = [targetFolio, full.folio].find((folio) => records.some((record) =>
       String(record.folio).match(/^\d+/)?.[0] === folio));
-    // Only the level cell may supply nivel; ignore full-page label fragments.
-    let result = { ...full, nivel: '', folio: knownFolio || targetFolio || full.folio };
+    // The right column excludes the document labels and accommodates different framing.
+    const levelReadings = [column.data];
+    let result = { ...full, nivel: selectLevel(levelReadings), folio: knownFolio || targetFolio || full.folio };
     if (!result.procedencia || !result.nivel || !result.documentDate) {
       await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE });
       if (!result.procedencia) {
@@ -126,9 +134,18 @@ export async function readDocumentFields(image, records = []) {
         result.procedencia = parts.procedencia.match(/\b(ESTATAL|FEDERAL|MUNICIPAL)\b/i)?.[0]?.toUpperCase() || '';
       }
       if (!result.nivel) {
-        const levelRead = await worker.recognize(cropRegion(bitmap, regions.nivel));
+        await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT });
+        const levelRead = await worker.recognize(cropRegion(bitmap, [.48, .23, .52, .43]));
+        levelReadings.push(levelRead.data);
         parts.nivel = levelRead.data.text.trim();
-        result.nivel = confidentLevel(levelRead.data);
+        result.nivel = selectLevel(levelReadings);
+        if (!result.nivel) {
+          await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE });
+          const focused = await worker.recognize(cropRegion(bitmap, regions.nivel));
+          levelReadings.push(focused.data);
+          result.nivel = selectLevel(levelReadings);
+        }
+        await worker.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE });
       }
       if (!result.documentDate) {
         const dateRead = await worker.recognize(cropRegion(bitmap, regions.documentDate));

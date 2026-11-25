@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 const source = await readFile(new URL('../src/lib/ocr.js', import.meta.url), 'utf8');
-const { findLevel, parseScanText, confidentLevel, DOCUMENT_LEVELS } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+const { findLevel, parseScanText, confidentLevel, DOCUMENT_LEVELS, selectLevel } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 test('rejects corrupted document labels rather than storing them as levels', () => {
   for (const value of ['OEOOOMEM', 'OEOOOMEM DOCUMENTO', 'DOCUMENTO', 'AD6E', '']) assert.equal(findLevel(value), '');
 });
@@ -26,4 +26,12 @@ test('requires confidence in both words of BASICA B', () => {
   assert.equal(confidentLevel(data), 'BASICA B');
   data.words[1].confidence = 40;
   assert.equal(confidentLevel(data), '');
+});
+
+test('accepts agreeing exact levels from two crops despite low OCR confidence', () => {
+ const reading = { text: 'ADGE', words: [{ text: 'ADGE', confidence: 50 }] };
+ assert.equal(selectLevel([reading]), '');
+ assert.equal(selectLevel([reading, reading]), 'ADGE');
+ assert.equal(selectLevel([reading, {text: 'PREE'}]), '');
+ assert.equal(selectLevel([{text:'OEOOOMEM'}, {text:'OEOOOMEM'}]), '');
 });
