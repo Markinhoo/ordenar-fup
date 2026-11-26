@@ -3,7 +3,7 @@ import { rpc } from '../lib/api';
 import { exportCsv } from '../lib/download';
 import { qnaLabel } from '../lib/qna';
 
-const labels = { scan: 'Escaneo', rescan: 'Reescaneo', manual_mark: 'Marca manual', manual_unmark: 'Desmarcado', manual_add: 'No digital' };
+const labels = { correction: 'Corrección de datos', scan: 'Escaneo', rescan: 'Reescaneo', manual_mark: 'Marca manual', manual_unmark: 'Desmarcado', manual_add: 'No digital' };
 
 export default function HistoryView({ batch, batches, hidden, version, onMessage }) {
   const [rows, setRows] = useState([]);

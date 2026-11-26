@@ -25,6 +25,9 @@ export default function ControlPage() {
   const [users, setUsers] = useState([]);
   const [batches, setBatches] = useState([]);
   const [batch, setBatch] = useState(null);
+  const [syncError, setSyncError] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
+  useEffect(() => { const update = () => setOnline(navigator.onLine); window.addEventListener('online', update); window.addEventListener('offline', update); return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); }; }, []);
   const [section, setSection] = useState(() => /\/organizar(?:\.html)?$/i.test(location.pathname) ? 'setup' : 'waiting');
   const [notice, setNotice] = useState({ text: '', error: false });
   const [accountView, setAccountView] = useState(null);
@@ -110,8 +113,8 @@ export default function ControlPage() {
     if (!batch?.id) return;
     const timer = setInterval(() => {
       if (document.hidden) return;
-      rpc('v2_get_batch', { p_batch_id: batch.id }).then(setBatch)
-        .catch((error) => message(`Sincronización: ${error.message}`, true));
+      rpc('v2_get_batch', { p_batch_id: batch.id }).then((data) => { setBatch(data); setSyncError(false); })
+        .catch(() => setSyncError(true));
     }, 5000);
     return () => clearInterval(timer);
   }, [batch?.id]);
@@ -202,11 +205,12 @@ export default function ControlPage() {
           </select>{isAdmin && <button type="button" onClick={() => { setSetupVersion((value) => value + 1); setSection('setup'); }}>Nuevo lote</button>}</>}
         </div>
       </div>
+      {(!online || syncError) && <p className="connection-warning" role="alert">{!online ? 'Sin conexión. Los cambios no se pueden guardar.' : 'No se pudo sincronizar. El listado puede estar desactualizado.'}</p>}
       <p className={`message${notice.error ? ' error' : ''}`} role="status" aria-live="polite">{notice.text}</p>
       {isAdmin && <BatchSetup key={setupVersion} users={users} hidden={section !== 'setup'} onCreate={createBatch} onMessage={message} />}
       {isAdmin && <UsersPage account={account} users={users} hidden={section !== 'users'} onUsersChanged={loadUsers} onAccountChanged={setAccount} />}
       <section className="section waiting-section" hidden={section !== 'waiting'}><div className="panel waiting-card"><h2>Listo para verificar</h2><p>Cuando la encargada te asigne un lote, aparecerá aquí automáticamente con tu QR para abrirlo en el celular.</p></div></section>
-      {batch && <><BatchList batch={batch} account={account} hidden={section !== 'list'} onMessage={message} onRefresh={refreshBatch}
+      {batch && <><BatchList key={batch.id} batch={batch} account={account} hidden={section !== 'list'} onMessage={message} onRefresh={refreshBatch}
         onOpenScanner={() => setScanMode('camera')} onPhoto={(file) => { if (file) { setPhoto(file); setScanMode('photo'); } }} />
         {isAdmin && <HistoryView batch={batch} batches={batches} hidden={section !== 'history'} version={historyVersion} onMessage={message} />}
       </>}

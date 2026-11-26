@@ -1,10 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
+import { enableScanSound, scanFeedback } from '../lib/scanFeedback';
 import { rpc } from '../lib/api';
 import { readDocumentFields, getDocumentWorker } from '../lib/ocr';
 
 export default function ScanModal({ batch, mode, photo, standalone = false, onClose, onRefresh, onMessage }) {
   const batchRef = useRef(batch);
   batchRef.current = batch;
+  const [online, setOnline] = useState(navigator.onLine);
+  const [phase, setPhase] = useState('ready');
+  const [lastSaved, setLastSaved] = useState(null);
+  const [soundReady, setSoundReady] = useState(false);
+  const duplicateRef = useRef('');
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener('online', update); window.addEventListener('offline', update);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
+  }, []);
+  useEffect(() => { setLastSaved(null); duplicateRef.current = ''; }, [batch?.id]);
+  function duplicate(folio) {
+    setPhase('duplicate'); setSignal('duplicate'); setStatus('Documento ya escaneado: ' + folio);
+    if (duplicateRef.current !== folio) { scanFeedback('duplicate'); duplicateRef.current = folio; }
+  }
+  function confirmed(saved, parsed) {
+    setPhase('saved'); setSignal('success');
+    setLastSaved({folio: saved.folio, nivel: parsed.nivel, by: saved.checkedBy, at: new Date()});
+    scanFeedback('saved');
+  }
   const videoRef = useRef(null);
   const guideRef = useRef(null);
   const modalRef = useRef(null);
@@ -55,15 +76,17 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
     async function scan() {
       const batch = batchRef.current;
       if (busyRef.current || !streamRef.current || document.hidden) return;
+      if (!navigator.onLine) { setPhase('offline'); setStatus('Sin conexión. Conserva el documento; todavía no se ha guardado.'); nextDelay = 1000; return; }
       const image = capture();
       if (!image) return;
       busyRef.current = true;
-      setStatus('Leyendo procedencia, nivel, folio y fecha…');
+      setPhase('reading'); setStatus('Leyendo procedencia, nivel, folio y fecha…');
       try {
         const parsed = await readDocumentFields(image, batch.records, fieldsRef.current);
         if (!active) return;
-        if (parsed.alreadyScanned) { setSignal('duplicate'); setStatus(`Documento ya escaneado: ${parsed.folio}`); nextDelay = 900; return; }
+        if (parsed.alreadyScanned) { duplicate(parsed.folio); nextDelay = 900; return; }
         setSignal('scanning');
+        if (duplicateRef.current !== parsed.folio) duplicateRef.current = '';
         if (!parsed.folio) { candidateRef.current = { signature: '', count: 0 }; fieldsRef.current = { folio: '', values: {} }; setStatus('Acerca el folio a la guía y mantén firme el documento.'); return; }
         if (fieldsRef.current.folio !== parsed.folio) fieldsRef.current = { folio: parsed.folio, values: {} };
         const accumulated = fieldsRef.current;
@@ -81,28 +104,29 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
         candidateRef.current = candidateRef.current.signature === signature
           ? { signature, count: candidateRef.current.count + 1 } : { signature, count: 1 };
         if (candidateRef.current.count < 2) { setStatus('Confirmando la lectura del recuadro…'); return; }
-        if (parsed.folio === seenFolioRef.current) { setStatus(`Documento ya escaneado: ${parsed.folio}`); return; }
+        if (parsed.folio === seenFolioRef.current) { duplicate(parsed.folio); return; }
         const record = batch.records.find((item) => String(item.folio).match(/^\d+/)?.[0] === parsed.folio);
         if (!record) { setSignal('error'); setStatus(`Folio ${parsed.folio} no está en este lote.`); return; }
         seenFolioRef.current = parsed.folio;
         if (record.checkedAt) {
-          setSignal('duplicate'); setStatus(`Documento ya escaneado: ${parsed.folio}`);
+          duplicate(parsed.folio);
           clearTimeout(signalTimerRef.current);
           signalTimerRef.current = setTimeout(() => setSignal('scanning'), 2000);
           return;
         }
+        setPhase('saving'); setStatus('Guardando… Conserva el documento hasta ver la palomita.');
         const saved = await rpc('v2_scan_document', { p_batch_id: batch.id, p_folio: parsed.folio,
           p_procedencia: parsed.procedencia, p_nivel: parsed.nivel, p_document_date: parsed.documentDate });
         if (saved.status === 'already') {
-          setSignal('duplicate'); setStatus(`Documento ya escaneado: ${saved.folio}`);
+          duplicate(saved.folio);
         } else {
-          setSignal('success'); setStatus(`✓ Folio ${saved.folio} registrado. Coloca el siguiente documento.`);
+          confirmed(saved, parsed); setStatus(`✓ Folio ${saved.folio} guardado. Coloca el siguiente documento.`);
         }
         clearTimeout(signalTimerRef.current);
         signalTimerRef.current = setTimeout(() => setSignal('scanning'), 2000);
         nextDelay = 1200;
-        await onRefresh();
-      } catch (error) { setSignal('error'); setStatus(error.message); seenFolioRef.current = ''; }
+        await onRefresh().catch(() => onMessage('Escaneo guardado; el listado se actualizará al recuperar la conexión.', true));
+      } catch (error) { setPhase('error'); setSignal('error'); setStatus('No se confirmó el guardado. Conserva el documento. ' + error.message); seenFolioRef.current = ''; nextDelay = 1500; }
       finally { busyRef.current = false; }
     }
     async function tick() {
@@ -200,16 +224,17 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
 
   async function save() {
     if (!result || saving) return;
-    setSaving(true);
+    setSaving(true); setPhase('saving'); setStatus('Guardando… Conserva el documento hasta confirmar.');
     try {
       const saved = await rpc('v2_scan_document', { p_batch_id: batch.id, p_folio: result.folio,
         p_procedencia: result.procedencia, p_nivel: result.nivel, p_document_date: result.documentDate });
+      if (saved.status === 'new') confirmed(saved, result); else duplicate(saved.folio);
       onMessage(saved.status === 'new' ? `Folio ${saved.folio} revisado por ${saved.checkedBy}.`
         : `Documento ya escaneado: folio ${saved.folio}. Responsable: ${saved.checkedBy}.`);
       setResult(null); setStatus('Guardado. Coloca el siguiente documento y lee el recuadro.');
-      await onRefresh();
+      await onRefresh().catch(() => onMessage('Guardado confirmado; pendiente actualizar el listado.', true));
       if (mode === 'photo') onClose();
-    } catch (error) { setStatus(error.message); onMessage(error.message, true); }
+    } catch (error) { setPhase('error'); setStatus('Guardado no confirmado. ' + error.message); onMessage(error.message, true); }
     finally { setSaving(false); }
   }
 
@@ -217,7 +242,9 @@ export default function ScanModal({ batch, mode, photo, standalone = false, onCl
   return <div ref={modalRef} className={`scan-modal${standalone ? ' scan-standalone' : ''}`} role="dialog" aria-modal="true" aria-label="Escanear recuadro del documento" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <div className={`scan-card${result ? ' has-result' : ''}`}><div className="scan-heading"><strong>Escanear recuadro completo</strong><button type="button" aria-label="Cerrar" onClick={onClose}>×</button></div>
       {mode === 'camera' && <><div className="scan-orientation"><span>Gira el celular a horizontal para ampliar el recuadro.</span><button type="button" onClick={expandCamera}>Pantalla completa horizontal</button></div><div className="video-wrap"><video ref={videoRef} autoPlay playsInline muted /><div ref={guideRef} className={`scan-guide laser-${signal}`} aria-label="Guía para las tres filas del recuadro" />{signal === 'success' && <div className="scan-success" aria-label="Documento registrado">✓</div>}</div></>}
+      <div className="scan-state-row"><strong data-phase={online ? phase : 'offline'}>{!online ? 'Sin conexión' : ({ready:'Listo',reading:'Leyendo',saving:'Guardando',saved:'Guardado confirmado',duplicate:'Ya escaneado',error:'Sin confirmar',offline:'Conexión recuperada'})[phase]}</strong><button type="button" onClick={async () => { try { setSoundReady(await enableScanSound()); } catch { setSoundReady(false); } }}>{soundReady ? 'Sonido activado' : 'Activar sonido'}</button></div>
       <p role="status">{status}</p>
+      {lastSaved && <div className="last-document scanner-last"><strong>Último guardado: {lastSaved.folio} · {lastSaved.nivel}</strong><span>{lastSaved.by} · {lastSaved.at.toLocaleTimeString('es-MX')}</span></div>}
       {result && <div id="scanResult"><dl>
         <div><dt>Procedencia</dt><dd>{result.procedencia}</dd></div><div><dt>Nivel</dt><dd>{result.nivel}</dd></div>
         <div><dt>No. de documento</dt><dd>{result.folio}</dd></div><div><dt>Fecha</dt><dd>{result.documentDate}</dd></div>
